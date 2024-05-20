@@ -1,3 +1,7 @@
+<h2> align="center"</h2>
+<div>Something done but I tested this only on one program :)<br> Leaks were checked: no leaks are possible</div>
+
+
 <h1 align="center">Interpreter-in-C</h1>
 <h3 align="center">Interpreter in C with custom syntax and the ability to debug programs</h3>
 <h3 align="center">Task in details: №10 in task.pdf</h3>
@@ -24,6 +28,7 @@
     <li>Base output</li>
 </ol>
 <p>Current setting are in the "config.txt" file. Program will not work without it.</p>
+<p>There isn't an instruction what base should be the operations arguments, so it would be decimal base.</p>
 
 <h3 align="center">How it works?</h3>
 <p>Interpreter open the "config.txt" file and search for custom settings. If first line is "STANDART", searching will be stopped. Then program checks, if there is a settings file in command line argument: if so, it change some instructions with newest. After this program fills out the bases (align, input and output) if needed and starts interpreteting program file</p>
