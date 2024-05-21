@@ -14,5 +14,8 @@ status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * exp
 status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * buffer, int input_base, int output_base, int assign_base);
 
 status free_from_delims(char ** string);
+status my_strtok(char ** result, char ** st_string, const char * delim);
+void shift_string(char ** string, int index);
+status is_delim(char character, const char * delim);
 
 #endif

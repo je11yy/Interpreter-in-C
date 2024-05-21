@@ -17,7 +17,8 @@ typedef enum
     invalid_variable,
     not_in_base,
     cannot_find,
-    invalid_lexeme
+    invalid_lexeme,
+    invalid_settings_file
 
 } status;
 
