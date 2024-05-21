@@ -13,7 +13,8 @@ void print_error(status const error)
         "Invalid variable.",
         "Variable is not in base.",
         "Variable is not initialized.",
-        "Invalid lexeme."
+        "Invalid lexeme.",
+        "Invalid settings file."
     };
     switch (error)
     {
@@ -43,6 +44,9 @@ void print_error(status const error)
             break;
         case invalid_lexeme:
             printf("%s %s\n", main_error, errors[8]);
+            break;
+        case invalid_settings_file:
+            printf("%s %s\n", main_error, errors[9]);
             break;
 
         default: break;

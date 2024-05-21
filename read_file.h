@@ -2,8 +2,6 @@
 #define RF_H
 
 #define _GNU_SOURCE
-#include "errors.h"
-#include "types.h"
 #include "interpreter.h"
 #include <string.h>
 #define OP_COUNT 13

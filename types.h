@@ -44,6 +44,8 @@ typedef struct current_settings
 
 } Current_settings, *Current_settings_ptr;
 
+static char * start_operations_names[] = {"not", "input", "output", "add", "mult", "sub", "pow", "div", "rem", "xor", "and", "or", "="};
+
 Current_settings_ptr create_current_settings();
 void free_current_settings(Current_settings_ptr settings);
 void change_name(Current_settings_ptr settings, operation operation_id, char * new_name);

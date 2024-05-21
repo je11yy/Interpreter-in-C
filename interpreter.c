@@ -151,7 +151,7 @@ status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_
         return no_memory;
     }
     int terms = 0;
-    while (token && is_operation(settings, token, &operation_name) != success)
+    while (token && is_operation(token, &operation_name) != success)
     {
         terms++;
         error = add_to_expression(&tmp_expression, token);
@@ -185,7 +185,7 @@ status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_
         free(tmp_expression);
         return invalid_lexeme;
     }
-    if (is_operation(settings, token, &operation_name) == success)
+    if (is_operation(token, &operation_name) == success)
     {
         free(token);
         token = NULL;

@@ -4,7 +4,6 @@
 
 Current_settings_ptr create_current_settings()
 {
-    char * start_operations_names[] = {"not", "input", "output", "add", "mult", "sub", "pow", "div", "rem", "xor", "and", "or", "="};
     operation_syntax start_basic_syntax[] = {left, left, left, left, left, middle, middle, middle, middle, middle, middle, middle, middle};
     operation_type start_basic_types[] = {unary, unary, unary, binary, binary, binary, binary, binary, binary, binary, binary, binary, binary};
     operation_syntax start_operation_result_type = left;
