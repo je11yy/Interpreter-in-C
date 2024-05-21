@@ -42,7 +42,7 @@ void print_error(status const error)
             printf("%s %s\n", main_error, errors[7]);
             break;
         case invalid_lexeme:
-            printf("%s %s\n", main_error, errors[7]);
+            printf("%s %s\n", main_error, errors[8]);
             break;
 
         default: break;

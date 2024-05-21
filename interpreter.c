@@ -1,16 +1,22 @@
 #include "interpreter.h"
 
+
 status add_to_expression(char ** expression, char * to_add)
 {
     size_t old_size = strlen(*expression);
     size_t new_size = old_size + strlen(to_add);
-    char * tmp = realloc(*expression, (new_size + 1) * sizeof(char));
+    char * tmp = realloc(*expression, (new_size + 2) * sizeof(char));
     if (!tmp)
     {
         free(expression);
         return no_memory;
     }
     *expression = tmp;
+    if (old_size != 0)
+    {
+        (*expression)[old_size] = ',';
+        old_size++;
+    }
     strcpy(*expression + old_size, to_add);
     return success;
 }
@@ -85,6 +91,7 @@ void shift_string(char ** string, int index)
 
 status my_strtok(char ** result, char ** st_string, const char * delim)
 {
+    int is_empty_string = 1;
     char * string = *st_string;
     *result = NULL;
     if (!string[0]) return success;
@@ -95,23 +102,41 @@ status my_strtok(char ** result, char ** st_string, const char * delim)
 
     while (string[i] && is_delim(string[i], delim) != success)
     {
+        if (string[i] != ' ' && string[i] != '\n' && string[i] != '\t') is_empty_string = 0;
         new_string[i] = string[i];
         ++i;
     }
+    if (i == 0 && is_delim(string[i], delim) == success) 
+    {
+        shift_string(st_string, i + 1);
+        free(new_string);
+        return my_strtok(result, st_string, delim);
+    }
+    if (is_empty_string)
+    {
+        free(new_string);
+        return success;
+    }
+    if (strcmp(delim, ";") == 0 && is_delim(string[i], delim) != success)
+    {
+        free(new_string);
+        return invalid_lexeme;
+    }
     if (is_delim(string[i], delim) == success) ++i;
     shift_string(st_string, i);
+    free_from_delims(&new_string);
     *result = new_string;
     return success;
 }
 
-status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, int input_base, int output_base, int assign_base)
+status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_expression, uint32_t * result, int input_base, int output_base, int assign_base)
 {
     if (!st_expression) return invalid_lexeme;
     char * expression = (char*)calloc(strlen(st_expression) + 1, sizeof(char));
     if (!expression) return no_memory;
     strcpy(expression, st_expression);
     char * token;
-    status error = my_strtok(&token, &expression, "() \n,");
+    status error = my_strtok(&token, &expression, "(), ");
     if (error != success)
     {
         free(expression);
@@ -125,8 +150,10 @@ status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, 
         free(expression);
         return no_memory;
     }
-    while (token && is_operation(token, &operation_name) != success)
+    int terms = 0;
+    while (token && is_operation(settings, token, &operation_name) != success)
     {
+        terms++;
         error = add_to_expression(&tmp_expression, token);
         if (error != success)
         {
@@ -136,7 +163,7 @@ status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, 
         }
         free(token);
         token = NULL;
-        error = my_strtok(&token, &expression, "() \n,");
+        error = my_strtok(&token, &expression, "(), ");
         if (error != success)
         {
             free(expression);
@@ -147,7 +174,7 @@ status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, 
     }
     if (!token)
     {
-        if (is_variable(tmp_expression) || is_number(tmp_expression))
+        if (is_variable(tmp_expression) == success || is_number(tmp_expression) == success)
         {
             free(expression);
             error = get_value(trie, tmp_expression, result);
@@ -158,19 +185,19 @@ status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, 
         free(tmp_expression);
         return invalid_lexeme;
     }
-    if (is_operation(token, &operation_name) == success)
+    if (is_operation(settings, token, &operation_name) == success)
     {
         free(token);
         token = NULL;
-        switch (basic_types[operation_name])
+        switch (settings->basic_types[operation_name])
         {
             case unary:
                 uint32_t value;
                 char * to_solve;
-                switch (basic_syntax[operation_name])
+                switch (settings->basic_syntax[operation_name])
                 {
                     case left:
-                        error = my_strtok(&to_solve, &expression, "() \n,");
+                        error = my_strtok(&to_solve, &expression, "(),");
                         if (error != success)
                         {
                             free(expression);
@@ -182,7 +209,7 @@ status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, 
                         to_solve = tmp_expression;
                         break;
                 }
-                error = solve_expression(trie, to_solve, &value, input_base, output_base, assign_base);
+                error = solve_expression(settings, trie, to_solve, &value, input_base, output_base, assign_base);
                 if (error != success)
                 {
                     free(to_solve);
@@ -209,10 +236,16 @@ status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, 
                 uint32_t value_2;
                 char * to_solve_1;
                 char * to_solve_2;
-                switch (basic_syntax[operation_name])
+                switch (settings->basic_syntax[operation_name])
                 {
                     case left:
-                        error = my_strtok(&to_solve_1, &expression, "() \n,");
+                        if (terms != 0)
+                        {
+                            free(expression);
+                            free(tmp_expression);
+                            return invalid_lexeme;
+                        }
+                        error = my_strtok(&to_solve_1, &expression, "(),");
                         if (error != success)
                         {
                             free(expression);
@@ -221,7 +254,13 @@ status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, 
                         }
                         break;
                     case right:
-                        error = my_strtok(&to_solve_1, &tmp_expression, "() \n,");
+                        if (terms != 2)
+                        {
+                            free(expression);
+                            free(tmp_expression);
+                            return invalid_lexeme;
+                        }
+                        error = my_strtok(&to_solve_1, &tmp_expression, "(),");
                         if (error != success)
                         {
                             free(expression);
@@ -230,7 +269,13 @@ status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, 
                         }
                         break;
                     case middle:
-                        error = my_strtok(&to_solve_1, &expression, "() \n,");
+                        if (terms != 1)
+                        {
+                            free(expression);
+                            free(tmp_expression);
+                            return invalid_lexeme;
+                        }
+                        error = my_strtok(&to_solve_1, &tmp_expression, "(), ");
                         if (error != success)
                         {
                             free(expression);
@@ -239,7 +284,9 @@ status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, 
                         }
                         break;
                 }
-                error = my_strtok(&to_solve_2, &expression, "() \n,");
+                if (settings->basic_syntax[operation_name] == middle) error = my_strtok(&to_solve_2, &expression, "(), ");
+                else if (settings->basic_syntax[operation_name] == right) error = my_strtok(&to_solve_2, &tmp_expression, "(),");
+                else error = my_strtok(&to_solve_2, &expression, "(),");
                 if (error != success)
                 {
                     free(to_solve_1);
@@ -247,7 +294,7 @@ status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, 
                     free(tmp_expression);
                     return error;
                 }
-                error = solve_expression(trie, to_solve_1, &value_1, input_base, output_base, assign_base);
+                error = solve_expression(settings, trie, to_solve_1, &value_1, input_base, output_base, assign_base);
                 if (error != success)
                 {
                     free(to_solve_1);
@@ -257,7 +304,7 @@ status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, 
                     return error;
                 }
                 free(to_solve_1);
-                error = solve_expression(trie, to_solve_2, &value_2, input_base, output_base, assign_base);
+                error = solve_expression(settings, trie, to_solve_2, &value_2, input_base, output_base, assign_base);
                 if (error != success)
                 {
                     free(to_solve_2);
@@ -279,21 +326,28 @@ status solve_expression(Trie_ptr trie, char * st_expression, uint32_t * result, 
                 break;
         }
     }
-    else if (is_variable(token) == success || is_number(token) == success)
-    {
-        free(tmp_expression);
-        free(expression);
-        error = get_value(trie, token, result);
-        free(token);
-        return error;
-    }
     free(tmp_expression);
     free(token);
     free(expression);
     return invalid_lexeme;
 }
 
-status scan_buffer(Trie_ptr trie, char * st_buffer, int input_base, int output_base, int assign_base)
+status free_from_delims(char ** string)
+{
+    if (!*string) return success;
+    int i = 0;
+    while ((*string)[i] && ((*string)[i] == ' ' || (*string)[i] == '\n' || (*string)[i] == '\t')) ++i;
+    shift_string(string, i);
+    i = strlen(*string) - 1;
+    while (i != 0 && ((*string)[i] == ' ' || (*string)[i] == '\n' || (*string)[i] == '\t'))
+    {
+        (*string)[i] = 0;
+        --i;
+    }
+    return success;
+}
+
+status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffer, int input_base, int output_base, int assign_base)
 {
     char * buffer = (char*)calloc(strlen(st_buffer) + 1, sizeof(char));
     if (!buffer) return no_memory;
@@ -318,7 +372,7 @@ status scan_buffer(Trie_ptr trie, char * st_buffer, int input_base, int output_b
         }
         uint32_t value;
         char * variable_name;
-        if (operation_result_type == left)
+        if (settings->operation_result_type == left)
         {
             if (is_variable(string) != success)
             {
@@ -348,7 +402,7 @@ status scan_buffer(Trie_ptr trie, char * st_buffer, int input_base, int output_b
                 free(line_copy);
                 return error;
             }
-            if ((error = solve_expression(trie, string, &value, input_base, output_base, assign_base)) != success)
+            if ((error = solve_expression(settings, trie, string, &value, input_base, output_base, assign_base)) != success)
             {
                 free(string);
                 free(buffer);
@@ -370,6 +424,8 @@ status scan_buffer(Trie_ptr trie, char * st_buffer, int input_base, int output_b
                 return no_memory;
             }
             strcpy(expression, string);
+            free(string);
+            string = NULL;
             error = my_strtok(&string, &line_copy, "=");
             if (error != success)
             {
@@ -400,7 +456,9 @@ status scan_buffer(Trie_ptr trie, char * st_buffer, int input_base, int output_b
                 return no_memory;
             }
             strcpy(variable_name, string);
-            if ((error = solve_expression(trie, expression, &value, input_base, output_base, assign_base)) != success)
+            free(string);
+            string = NULL;
+            if ((error = solve_expression(settings, trie, expression, &value, input_base, output_base, assign_base)) != success)
             {
                 free(string);
                 free(buffer);

@@ -2,6 +2,9 @@
 <div>Something done but I tested this only on one program :)<br> Leaks were checked: no leaks are possible</div>
 
 
+<h2 align="center">[from 21.05.2024]</h2>
+<div>All syntax for operations works! Interpreter-part is done<br> Leaks were checked: no leaks are possible</div>
+
 <h1 align="center">Interpreter-in-C</h1>
 <h3 align="center">Interpreter in C with custom syntax and the ability to debug programs</h3>
 <h3 align="center">Task in details: №10 in task.pdf</h3>
