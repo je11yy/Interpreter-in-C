@@ -1,3 +1,13 @@
+<h2 align="center">TODO</h2>
+<div>
+    <ol>
+        <li>Comments in program;</li>
+        <li>Writing in config file new settings;</li>
+        <li>Debug function;</li>
+        <li>Connect all parts together</li>
+    </ol>
+</div>
+
 <h2 align="center">[from 20.05.2024]</h2>
 <div>Something done but I tested this only on one program :)<br> Leaks were checked: no leaks are possible
     <br>Reading settings file added</div>
