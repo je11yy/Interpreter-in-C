@@ -1,9 +1,9 @@
 <h2 align="center">TODO</h2>
 <div>
     <ol>
-        <li>Nesting for all syntax type, check unary operations;</li>
+        <li>Unary operations;</li>
         <li>Debug function;</li>
-        <li>Connect all parts together</li>
+        <li>Segmention fault on settings.</li>
     </ol>
 </div>
 

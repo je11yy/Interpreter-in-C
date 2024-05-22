@@ -42,6 +42,7 @@ status make_binary_expression(Trie_ptr trie, operation operation_name, uint32_t 
     switch (operation_name)
     {
         case ADD:
+            // printf("%d %d\n", value_1, value_2);
             return add_operation(trie, value_1, value_2, result);
         case MULT:
             return mult_operation(trie, value_1, value_2, result);
@@ -125,7 +126,7 @@ status my_strtok(char ** result, char ** st_string, const char * delim)
     if (is_delim(string[i], delim) == success) ++i;
 
     shift_string(st_string, i);
-    free_from_delims(&new_string);
+    if (strcmp(delim, ";") != 0) free_from_delims(&new_string);
     *result = new_string;
     return success;
 }
@@ -176,307 +177,200 @@ status my_assign_strtok(char ** result, char ** st_string, const char * delim)
 int check_nesting(char * expression)
 {
     int count = 0;
-    for (int i = 0; expression[i] != 0; ++i) if (expression[i] == '(') count++;
+    int close_count = 0;
+    for (int i = 0; expression[i] != 0; ++i)
+    {
+        if (expression[i] == '(') count++;
+        else if (expression[i] == ')') close_count++;
+    }
+    if (count != close_count) return -1;
     return count;
 }
 
 status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_expression, uint32_t * result, int input_base, int output_base, int assign_base)
 {
-    if (!st_expression) return invalid_lexeme;
-    char * expression = (char*)calloc(strlen(st_expression) + 1, sizeof(char));
+    char * expression = NULL;
+    char * token = NULL;
+    char * tok = NULL;
+    char * tmp_expression = NULL;
+    char * to_solve_1 = NULL;
+    char * to_solve_2 = NULL;
+    operation operation_name;
+    status error = success;
+    int tmp_nesting = 0;
+    int arguments_count = 0;
+    int commands_count = 0;
+    uint32_t value_1;
+    uint32_t value_2;
+    int nesting = check_nesting(st_expression);
+    if (!st_expression || nesting < 0) return invalid_lexeme;
+    if (!nesting) nesting = 1;
+
+
+    expression = (char*)calloc(strlen(st_expression) + 1, sizeof(char));
     if (!expression) return no_memory;
     strcpy(expression, st_expression);
-    int nesting = check_nesting(expression);
-    char * token;
-    status error = my_strtok(&token, &expression, "(), ");
-    if (error != success)
-    {
-        free(expression);
-        free(token);
-        return error;
-    }
-    operation operation_name;
-    char * tmp_expression = (char*)calloc(1, sizeof(char));
+    if ((error = my_strtok(&token, &expression, "(), ")) != success) goto cleanup;
+    tmp_expression = (char*)calloc(1, sizeof(char));
     if (!tmp_expression)
     {
-        free(expression);
-        return no_memory;
+        error = no_memory;
+        goto cleanup;
     }
-    int terms = 0;
-    while (token && is_operation(token, &operation_name) != success)
+    tmp_nesting = nesting;
+    
+    while (token)
     {
-        terms++;
-        error = add_to_expression(&tmp_expression, token);
-        if (error != success)
+        if (token[0] && is_operation(token, &operation_name) == success)
         {
-            free(expression);
-            free(token);
-            return error;
+            commands_count++;
+            if ((settings->basic_syntax[operation_name] == left && arguments_count / commands_count != 0) ||
+                (settings->basic_syntax[operation_name] == middle && 
+                (settings->basic_types[operation_name] == unary || arguments_count / commands_count != 1)) ||
+                (settings->basic_syntax[operation_name] == right && 
+                ((settings->basic_types[operation_name] == binary && arguments_count / commands_count != 2) ||
+                (settings->basic_types[operation_name] == unary && arguments_count / commands_count != 1)))
+                )
+            {
+                error = invalid_lexeme;
+                goto cleanup;
+            }
+            if (settings->basic_syntax[operation_name] == left) break;
+            tmp_nesting--;
+            if (tmp_nesting <= 0) break;
         }
+        if (token[0] && (error = add_to_expression(&tmp_expression, token)) != success) goto cleanup;
+        if (token[0]) arguments_count++;
+
         free(token);
         token = NULL;
-        error = my_strtok(&token, &expression, "(), ");
-        if (error != success)
-        {
-            free(expression);
-            free(tmp_expression);
-            free(token);
-            return error;
-        }
+
+        if ((error = my_strtok(&token, &expression, "(), ")) != success) goto cleanup;
     }
     if (!token)
     {
         if (is_variable(tmp_expression) == success || is_number(tmp_expression) == success)
         {
-            free(expression);
             error = get_value(trie, tmp_expression, result, assign_base);
-            free(tmp_expression);
-            return error;
+            goto cleanup;
         }
-        free(expression);
-        free(tmp_expression);
-        return invalid_lexeme;
+        error = invalid_lexeme;
+        goto cleanup;
     }
-    if (is_operation(token, &operation_name) == success)
+
+    // если токен - команда
+    if (settings->basic_syntax[operation_name] != left && nesting && commands_count < nesting)
     {
-        free(token);
-        token = NULL;
-        switch (settings->basic_types[operation_name])
-        {
-            case unary:
-                uint32_t value;
-                char * to_solve;
-                switch (settings->basic_syntax[operation_name])
-                {
-                    case left:
-                        error = my_strtok(&to_solve, &expression, "(),");
-                        if (error != success)
-                        {
-                            free(expression);
-                            free(tmp_expression);
-                            return error;
-                        }
-                        break;
-                    case right:
-                        to_solve = tmp_expression;
-                        break;
-                }
-                error = solve_expression(settings, trie, to_solve, &value, input_base, output_base, assign_base);
-                if (error != success)
-                {
-                    free(to_solve);
-                    free(tmp_expression);
-                    free(expression);
-                    free(tmp_expression);
-                    return error;
-                }
-                free(to_solve);
-                error = make_unary_expression(trie, operation_name, value, result, input_base, output_base, assign_base);
-                if (error != success)
-                {
-                    free(tmp_expression);
-                    free(expression);
-                    free(tmp_expression);
-                    return error;
-                }
-                free(expression);
-                free(tmp_expression);
-                return success;
-                break;
-            case binary:
-                uint32_t value_1;
-                uint32_t value_2;
-                char * to_solve_1 = (char*)calloc(1, sizeof(char));
-                if (!to_solve_1)
-                {
-                    free(expression);
-                    free(tmp_expression);
-                    return no_memory;
-                }
-                char * to_solve_2 = (char*)calloc(1, sizeof(char));
-                if (!to_solve_2)
-                {
-                    free(to_solve_1);
-                    free(expression);
-                    free(tmp_expression);
-                    return no_memory;
-                }
-                switch (settings->basic_syntax[operation_name])
-                {
-                    case left:
-                        if (terms != 0)
-                        {
-                            free(to_solve_2);
-                            free(to_solve_1);
-                            free(expression);
-                            free(tmp_expression);
-                            return invalid_lexeme;
-                        }
-                        char * tok = NULL;
-                        error = my_strtok(&tok, &expression, ",");
-                        if (error != success)
-                        {
-                            free(to_solve_2);
-                            free(to_solve_1);
-                            free(expression);
-                            free(tmp_expression);
-                            return error;
-                        }
-                        if ((error = add_to_expression(&to_solve_1, tok)) != success)
-                        {
-                            free(to_solve_2);
-                            free(to_solve_1);
-                            free(expression);
-                            free(tmp_expression);
-                            return error;
-                        }
-                        int tmp_nesting = nesting - 1;
-                        while (tok && tmp_nesting - 1 > 0)
-                        {
-                            free(tok);
-                            tok = NULL;
-                            error = my_strtok(&tok, &expression, ",");
-                            if (error != success)
-                            {
-                                free(to_solve_2);
-                                free(to_solve_1);
-                                free(expression);
-                                free(tmp_expression);
-                                return error;
-                            }
-                            if ((error = add_to_expression(&to_solve_1, tok)) != success)
-                            {
-                                free(to_solve_2);
-                                free(to_solve_1);
-                                free(expression);
-                                free(tmp_expression);
-                                return error;
-                            }
-                            tmp_nesting--;
-                        }
-                        if (tok) free(tok);
-                        break;
-                    case right:
-                        if (terms != 2)
-                        {
-                            free(expression);
-                            free(tmp_expression);
-                            return invalid_lexeme;
-                        }
-                        error = my_strtok(&to_solve_1, &tmp_expression, "(),");
-                        if (error != success)
-                        {
-                            free(expression);
-                            free(tmp_expression);
-                            return error;
-                        }
-                        break;
-                    case middle:
-                        if (terms != 1)
-                        {
-                            free(expression);
-                            free(tmp_expression);
-                            return invalid_lexeme;
-                        }
-                        error = my_strtok(&to_solve_1, &tmp_expression, "(), ");
-                        if (error != success)
-                        {
-                            free(expression);
-                            free(tmp_expression);
-                            return error;
-                        }
-                        break;
-                }
-                if (settings->basic_syntax[operation_name] == middle) error = my_strtok(&to_solve_2, &expression, "(), ");
-                else if (settings->basic_syntax[operation_name] == right) error = my_strtok(&to_solve_2, &tmp_expression, "(),");
-                else
-                {
-                    char * tok = NULL;
-                    int tmp_nesting = nesting - 1;
-                    error = my_strtok(&tok, &expression, ",)");
-                    if (error != success)
-                    {
-                        free(to_solve_2);
-                        free(to_solve_1);
-                        free(expression);
-                        free(tmp_expression);
-                        return error;
-                    }
-                    if ((error = add_to_expression(&to_solve_2, tok)) != success)
-                    {
-                        free(to_solve_2);
-                        free(to_solve_1);
-                        free(expression);
-                        free(tmp_expression);
-                        return error;
-                    }
-                    while (tok && tmp_nesting - 1 > 0)
-                    {
-                        free(tok);
-                        tok = NULL;
-                        error = my_strtok(&tok, &expression, ",)");
-                        if (error != success)
-                        {
-                            free(to_solve_2);
-                            free(to_solve_1);
-                            free(expression);
-                            free(tmp_expression);
-                            return error;
-                        }
-                        if ((error = add_to_expression(&to_solve_2, tok)) != success)
-                        {
-                            free(to_solve_2);
-                            free(to_solve_1);
-                            free(expression);
-                            free(tmp_expression);
-                            return error;
-                        }
-                        tmp_nesting--;
-                    }
-                }
-                if (error != success)
-                {
-                    free(to_solve_1);
-                    free(expression);
-                    free(tmp_expression);
-                    return error;
-                }
-                error = solve_expression(settings, trie, to_solve_1, &value_1, input_base, output_base, assign_base);
-                if (error != success)
-                {
-                    free(to_solve_1);
-                    free(to_solve_2);
-                    free(expression);
-                    free(tmp_expression);
-                    return error;
-                }
-                free(to_solve_1);
-                error = solve_expression(settings, trie, to_solve_2, &value_2, input_base, output_base, assign_base);
-                if (error != success)
-                {
-                    free(to_solve_2);
-                    free(expression);
-                    free(tmp_expression);
-                    return error;
-                }
-                free(to_solve_2);
-                error = make_binary_expression(trie, operation_name, value_1, value_2, result);
-                if (error != success)
-                {
-                    free(expression);
-                    free(tmp_expression);
-                    return error;
-                }
-                free(tmp_expression);
-                free(expression);
-                return success;
-                break;
-        }
+        error = invalid_lexeme;
+        goto cleanup;
     }
-    free(tmp_expression);
+
     free(token);
-    free(expression);
-    return invalid_lexeme;
+    token = NULL;
+
+    switch (settings->basic_types[operation_name])
+    {
+        case unary:
+            switch (settings->basic_syntax[operation_name])
+            {
+                case left:
+                    if((error = my_strtok(&to_solve_1, &expression, "(),")) != success) goto cleanup;
+                    break;
+
+                case right:
+                    to_solve_1 = tmp_expression;
+                    break;
+            }
+            if ((error = solve_expression(settings, trie, to_solve_1, &value_1, input_base, output_base, assign_base)) != success) goto cleanup;
+            if ((error = make_unary_expression(trie, operation_name, value_1, result, input_base, output_base, assign_base)) != success) goto cleanup;
+            break;
+
+        case binary:
+            to_solve_1 = (char*)calloc(1, sizeof(char));
+            if (!to_solve_1)
+            {
+                error = no_memory;
+                goto cleanup;
+            }
+            to_solve_2 = (char*)calloc(1, sizeof(char));
+            if (!to_solve_2)
+            {
+                error = no_memory;
+                goto cleanup;
+            }
+            char * tmp_expr;
+            // первый аргумент
+            switch (settings->basic_syntax[operation_name])
+            {
+                case left:
+                    tmp_nesting = nesting;
+                    tmp_expr = expression;
+                    break;
+
+                case right:
+                    tmp_nesting = nesting;
+                    tmp_expr = tmp_expression;
+                    break;
+
+                case middle:
+                    tmp_nesting = nesting + 1;
+                    tmp_expr = tmp_expression;
+                    break;
+            }
+            if ((error = my_strtok(&tok, &tmp_expr, "(),")) != success) goto cleanup;
+            while (tok && tmp_nesting > 0)
+            {
+                if ((error = add_to_expression(&to_solve_1, tok)) != success) goto cleanup;
+                free(tok);
+                tok = NULL;
+                tmp_nesting--;
+                if (tmp_nesting <= 0) break;
+                if ((error = my_strtok(&tok, &tmp_expr, "(),")) != success) goto cleanup;
+            }
+            if (tok) free(tok);
+
+            // второй аргумент
+            switch (settings->basic_syntax[operation_name])
+            {
+                case left:
+                    tmp_nesting = nesting;
+                    tmp_expr = expression;
+                    break;
+
+                case right:
+                    tmp_nesting = nesting;
+                    tmp_expr = tmp_expression;
+                    break;
+
+                case middle:
+                    tmp_expr = expression;
+                    tmp_nesting = nesting;
+                    break;
+            }
+
+            if ((error = my_strtok(&tok, &tmp_expr, "(),")) != success) goto cleanup;
+            while (tok && tmp_nesting > 0)
+            {
+                if ((error = add_to_expression(&to_solve_2, tok)) != success) goto cleanup;
+                free(tok);
+                tok = NULL;
+                tmp_nesting--;
+                if (tmp_nesting <= 0) break;
+                if ((error = my_strtok(&tok, &tmp_expr, "(),")) != success) goto cleanup;
+            }
+            if ((error = solve_expression(settings, trie, to_solve_1, &value_1, input_base, output_base, assign_base)) != success) goto cleanup;
+            if ((error = solve_expression(settings, trie, to_solve_2, &value_2, input_base, output_base, assign_base)) != success) goto cleanup;
+            if ((error = make_binary_expression(trie, operation_name, value_1, value_2, result)) != success) goto cleanup;
+            break;
+    }
+    
+    cleanup:   
+        if (expression) free(expression);
+        if (token) free(token);
+        if (tmp_expression) free(tmp_expression);
+        if (to_solve_1) free(to_solve_1);
+        if (to_solve_2) free(to_solve_2);
+        return error;
 }
 
 status free_from_delims(char ** string)

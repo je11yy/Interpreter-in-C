@@ -7,10 +7,13 @@ status convert_to_decimal_base(char * to_convert, int original_base, uint32_t * 
     if ((error = check_if_in_base(to_convert, original_base)) != success) return error;
 
     uint32_t preresult = 0;
-    for (int i = 0; to_convert[i] != 0; ++i)
+    int size = strlen(to_convert);
+    int power = 1;
+    for (int i = size - 1; i >= 0; --i)
     {
-        if (isdigit(to_convert[i])) preresult += to_convert[i] - '0';
-        else preresult += toupper(to_convert[i]) - 'A' + 10;
+        if (isdigit(to_convert[i])) preresult += (power) * (to_convert[i] - '0');
+        else preresult += (power) * (toupper(to_convert[i]) - 'A' + 10);
+        power *= 10;
     }
     *result = preresult;
     return success;

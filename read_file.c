@@ -27,6 +27,7 @@ status read_file_with_settings(FILE *file, Current_settings_ptr settings)
     int command_flag = 0;
     operation operation_name;
     int operation_changing = 0;
+
     while(getline(&line, &size, file) > 0)
     {
         char * token;
@@ -43,11 +44,15 @@ status read_file_with_settings(FILE *file, Current_settings_ptr settings)
                 settings->operations_names[operation_name] = token;
                 command_flag = 1;
                 operation_changing = 0;
+                free(token);
+                token = NULL;
                 if ((error = my_strtok(&token, &line, " \n\t")))
                 {
                     free(line);
                     return error;
                 }
+                free(line);
+                line = NULL;
                 continue;
             }
             if (flag && find_comment_end(&token) == success) flag = 0;
@@ -59,6 +64,8 @@ status read_file_with_settings(FILE *file, Current_settings_ptr settings)
                     free(line);
                     return error;
                 }
+                free(line);
+                line = NULL;
                 continue;
             }
             if (token[0] == '#') break;
@@ -67,11 +74,15 @@ status read_file_with_settings(FILE *file, Current_settings_ptr settings)
             if (flag && find_comment_end(&token) == success) flag = 0;
             else if (flag)
             {
+                free(token);
+                token = NULL;
                 if ((error = my_strtok(&token, &line, " \n\t")))
                 {
                     free(line);
                     return error;
                 }
+                free(line);
+                line = NULL;
                 continue;
             }
 
@@ -143,6 +154,8 @@ status read_file_with_settings(FILE *file, Current_settings_ptr settings)
                 free(line);
                 return error;
             }
+            free(line);
+            line = NULL;
         }
         command_flag = 0;
         if (token) free(token);
@@ -151,5 +164,7 @@ status read_file_with_settings(FILE *file, Current_settings_ptr settings)
         size = 0;
         if (operation_changing) return invalid_settings_file;
     }
+    free(line);
+    line = NULL;
     return success;
 }
