@@ -1,7 +1,6 @@
 <h2 align="center">TODO</h2>
 <div>
     <ol>
-        <li>Unary operations;</li>
         <li>Debug function;</li>
         <li>Segmention fault on settings.</li>
     </ol>

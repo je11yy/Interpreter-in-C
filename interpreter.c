@@ -21,14 +21,14 @@ status add_to_expression(char ** expression, char * to_add)
     return success;
 }
 
-status make_unary_expression(Trie_ptr trie, operation operation_name, uint32_t value, uint32_t * result, int input_base, int output_base, int assign_base)
+status make_unary_expression(Trie_ptr trie, char * variable_name, operation operation_name, uint32_t value, uint32_t * result, int input_base, int output_base, int assign_base)
 {
     switch (operation_name)
     {
         case NOT:
             return not_operation(trie, value, result);
         case INPUT:
-            return input_operation(trie, input_base, result);
+            return input_operation(trie, input_base, result, variable_name);
         case OUTPUT:
             return output_operation(trie, value, output_base);
         default:
@@ -145,6 +145,7 @@ status my_assign_strtok(char ** result, char ** st_string, const char * delim)
     char * ptr = strstr(string, delim);
     if (!ptr)
     {
+        strcpy(new_string, *st_string);
         shift_string(st_string, strlen(string));
         free_from_delims(&new_string);
         *result = new_string;
@@ -282,7 +283,7 @@ status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_
                     break;
             }
             if ((error = solve_expression(settings, trie, to_solve_1, &value_1, input_base, output_base, assign_base)) != success) goto cleanup;
-            if ((error = make_unary_expression(trie, operation_name, value_1, result, input_base, output_base, assign_base)) != success) goto cleanup;
+            if ((error = make_unary_expression(trie, to_solve_1, operation_name, value_1, result, input_base, output_base, assign_base)) != success) goto cleanup;
             break;
 
         case binary:
@@ -422,20 +423,32 @@ status check_comments(char ** st_string, int * is_breakpoint)
 
 status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffer, int input_base, int output_base, int assign_base)
 {
-    char * buffer = (char*)calloc(strlen(st_buffer) + 1, sizeof(char));
+    char * buffer = NULL;
+    status error = success;
+    char * line = NULL;
+    int comment = 0;
+    int i = 0;
+    int breakpoint;
+    char * line_copy_1 = NULL;
+    char * line_copy = NULL;
+    char * string = NULL;
+    char * copy_res = NULL;
+    uint32_t value;
+    char * variable_name = NULL;
+    char * string_copy = NULL;
+    char * expression = NULL;
+
+    buffer = (char*)calloc(strlen(st_buffer) + 1, sizeof(char));
     if (!buffer) return no_memory;
     strcpy(buffer, st_buffer);
-    status error;
-    char * line;
-    error = my_strtok(&line, &buffer, ";");
-    if (error != success) return error;
-    int comment = 0;
+    if ((error = my_strtok(&line, &buffer, ";")) != success) goto cleanup;
+
     while (line)
     {
         if (comment)
         {
             comment = 0;
-            int i = 0;
+            i = 0;
             while (line[i] && line[i] != '\n')
             {
                 line[i] = ' ';
@@ -444,165 +457,138 @@ status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffe
             if (!line[i])
             {
                 free(line);
-                line = NULL;
-                error = my_strtok(&line, &buffer, ";");
-                if (error != success) return error;
+                if ((error = my_strtok(&line, &buffer, ";")) != success) goto cleanup;
                 continue;
             }
         }
         free_from_delims(&line);
-        int breakpoint;
         if ((error = check_comments(&line, &breakpoint)) == success) // то есть комментарий не закончился
         {
             comment = 1;
             if (line[0] != '#')
             {
-                char * line_copy_1 = (char*)malloc((strlen(line) + 1) * sizeof(char));
-                if (!line_copy_1) return no_memory;
+                line_copy_1 = (char*)malloc((strlen(line) + 1) * sizeof(char));
+                if (!line_copy_1) 
+                {
+                    error = no_memory;
+                    goto cleanup;
+                }
                 strcpy(line_copy_1, line);
-                error = my_strtok(&line, &line_copy_1, "#");
+                if (error = my_strtok(&line, &line_copy_1, "#") != success) goto cleanup;
                 free(line_copy_1);
-                if (error != success) return error;
             }
             else
             {
                 free(line);
                 line = NULL;
-                error = my_strtok(&line, &buffer, ";");
-                if (error != success) return error;
+                if (error = my_strtok(&line, &buffer, ";") != success) goto cleanup;
                 continue;
             }
         }
-        char * line_copy = (char*)malloc((strlen(line) + 1) * sizeof(char));
-        if (!line_copy) return no_memory;
-        strcpy(line_copy, line);
-        char * string;
-        error = my_assign_strtok(&string, &line_copy, settings->operations_names[OPERATIONS_COUNT - 1]);
-        if (error != success)
+        line_copy = (char*)malloc((strlen(line) + 1) * sizeof(char));
+        if (!line_copy)
         {
-            free(buffer);
-            free(line);
-            free(line_copy);
-            return error;
+            error = no_memory;
+            goto cleanup;
         }
-        uint32_t value;
-        char * variable_name;
-        if (settings->operation_result_type == left)
+        strcpy(line_copy, line);
+        if ((error = my_assign_strtok(&string, &line_copy, settings->operations_names[OPERATIONS_COUNT - 1])) != success) goto cleanup;
+        string_copy = (char*)calloc(strlen(string) + 1, sizeof(char));
+        if (!string_copy)
         {
-            if (is_variable(string) != success)
-            {
-                free(string);
-                free(buffer);
-                free(line);
-                free(line_copy);
-                return invalid_variable;
-            }
-            variable_name = (char*)malloc((strlen(string) + 1) * sizeof(char));
-            if (!variable_name)
-            {
-                free(string);
-                free(buffer);
-                free(line);
-                free(line_copy);
-                return no_memory;
-            }
-            strcpy(variable_name, string);
-            free(string);
-            string = NULL;
-            error = my_strtok(&string, &line_copy, settings->operations_names[OPERATIONS_COUNT - 1]);
-            if (error != success)
-            {
-                free(buffer);
-                free(line);
-                free(line_copy);
-                return error;
-            }
-            if ((error = solve_expression(settings, trie, string, &value, input_base, output_base, assign_base)) != success)
-            {
-                free(string);
-                free(buffer);
-                free(line);
-                free(variable_name);
-                free(line_copy);
-                return error;
-            }
+            error = no_memory;
+            goto cleanup;
+        }
+        strcpy(string_copy, string);
+        if ((error = my_strtok(&copy_res, &string_copy, "()")) != success) goto cleanup;
+        if (strcmp(copy_res, "output") == success || strcmp(copy_res, "input") == success)
+        {
+            free(copy_res);
+            copy_res = NULL;
+            free(string_copy);
+            string_copy = NULL;
+            if ((error = solve_expression(settings, trie, string, &value, input_base, output_base, assign_base)) != success) goto cleanup;
         }
         else
         {
-            char * expression = (char*)malloc((strlen(string) + 1) * sizeof(char));
-            if (!expression)
+            free(copy_res);
+            copy_res = NULL;
+            if (string_copy) free(string_copy);
+            string_copy = NULL;
+            if (copy_res) free(copy_res);
+            copy_res = NULL;
+            if (settings->operation_result_type == left)
             {
-                free(string);
-                free(buffer);
-                free(line_copy);
-                free(line);
-                return no_memory;
+                if (is_variable(string) != success)
+                {
+                    error =  invalid_variable;
+                    goto cleanup;
+                }
+                variable_name = (char*)malloc((strlen(string) + 1) * sizeof(char));
+                if (!variable_name)
+                {
+                    error = no_memory;
+                    goto cleanup;
+                }
+                strcpy(variable_name, string);
+                if (string) free(string);
+                string = NULL;    
+                if ((error = my_strtok(&string, &line_copy, settings->operations_names[OPERATIONS_COUNT - 1])) != success) goto cleanup;
+                if ((error = solve_expression(settings, trie, string, &value, input_base, output_base, assign_base)) != success) goto cleanup;
             }
-            strcpy(expression, string);
-            free(string);
-            string = NULL;
-            error = my_strtok(&string, &line_copy, settings->operations_names[OPERATIONS_COUNT - 1]);
-            if (error != success)
+            else
             {
-                free(string);
-                free(buffer);
-                free(line);
-                free(line_copy);
-                free(expression);
-                return error;
+                expression = (char*)malloc((strlen(string) + 1) * sizeof(char));
+                if (!expression)
+                {
+                    error = no_memory;
+                    goto cleanup;
+                }
+                strcpy(expression, string);
+                if (string) free(string);
+                string = NULL;
+                if ((error = my_strtok(&string, &line_copy, settings->operations_names[OPERATIONS_COUNT - 1])) != success) goto cleanup;
+                if (is_variable(string) != success)
+                {
+                    error = invalid_variable;
+                    goto cleanup;
+                }
+                variable_name = (char*)malloc((strlen(string) + 1) * sizeof(char));
+                if (!variable_name)
+                {
+                    error = no_memory;
+                    goto cleanup;
+                }
+                strcpy(variable_name, string);
+                if (string) free(string);
+                string = NULL;
+                if ((error = solve_expression(settings, trie, expression, &value, input_base, output_base, assign_base)) != success) goto cleanup;
+                if (expression) free(expression);
             }
-            if (is_variable(string) != success)
-            {
-                free(string);
-                free(buffer);
-                free(line);
-                free(line_copy);
-                free(expression);
-                return invalid_variable;
-            }
-            variable_name = (char*)malloc((strlen(string) + 1) * sizeof(char));
-            if (!variable_name)
-            {
-                free(string);
-                free(buffer);
-                free(line);
-                free(line_copy);
-                free(expression);
-                return no_memory;
-            }
-            strcpy(variable_name, string);
-            free(string);
-            string = NULL;
-            if ((error = solve_expression(settings, trie, expression, &value, input_base, output_base, assign_base)) != success)
-            {
-                free(string);
-                free(buffer);
-                free(line);
-                free(expression);
-                free(line_copy);
-                return error;
-            }
-            free(expression);
+            if ((error = Trie_insert(trie, variable_name, value)) != success) goto cleanup;
         }
-        if ((error = Trie_insert(trie, variable_name, value)) != success)
-        {
-            free(string);
-            free(buffer);
-            free(line);
-            free(variable_name);
-            free(line_copy);
-            return error;
-        }
-        free(variable_name);
-        free(string);
-        free(line_copy);
-        free(line);
+        if (variable_name && variable_name != string) free(variable_name);
+        variable_name = NULL;
+        if (string) free(string);
+        string = NULL;
+        if (line_copy) free(line_copy);
+        line_copy = NULL;
+        if (line) free(line);
         line = NULL;
-        error = my_strtok(&line, &buffer, ";");
-        if (error != success) return error;
+        if ((error = my_strtok(&line, &buffer, ";")) != success) goto cleanup;
     }
-    free(buffer);
-    return success;
+
+    cleanup:
+        if (buffer) free(buffer);
+        if (line) free(line);
+        if (line_copy_1) free(line_copy_1);
+        if (line_copy) free(line_copy);
+        if (string) free(string);
+        if (copy_res) free(copy_res);
+        if (variable_name) free(variable_name);
+        if (string_copy) free(string_copy);
+        if (expression) free(expression);
+        return error;
 }
 
 status read_full_file(FILE * file, char ** string)
@@ -664,14 +650,6 @@ status interpretate(FILE * file, Current_settings_ptr settings, int input_base, 
         free(buffer);
         return error;
     }
-
-    uint32_t value;
-    get_value(trie, "var_1", &value, 10);
-    printf("var_1: %d\n", value);
-    get_value(trie, "var_2", &value, 10);
-    printf("var_2: %d\n", value);
-    get_value(trie, "Var3", &value, 10);
-    printf("Var3: %d\n", value);
 
     Trie_free(trie);
     free_current_settings(settings);

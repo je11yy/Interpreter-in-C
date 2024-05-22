@@ -13,7 +13,7 @@ status convert_to_decimal_base(char * to_convert, int original_base, uint32_t * 
     {
         if (isdigit(to_convert[i])) preresult += (power) * (to_convert[i] - '0');
         else preresult += (power) * (toupper(to_convert[i]) - 'A' + 10);
-        power *= 10;
+        power *= original_base;
     }
     *result = preresult;
     return success;
@@ -27,7 +27,7 @@ status convert_to_base(uint32_t to_convert, int to_base, char ** result)
     if (!*result) return no_memory;
     (*result)[size] = 0;
     int i = size - 1;
-    while (i)
+    while (i >= 0)
     {
         int remainder = to_convert % to_base;
         if (remainder < 10) (*result)[i] = remainder + '0';
@@ -63,21 +63,32 @@ status not_operation(Trie_ptr trie, uint32_t value, uint32_t * result)
 
 status output_operation(Trie_ptr trie, uint32_t value, int output_base)
 {
-    // TODO to base
-    printf("%ud\n", value);
+    if (output_base != 10)
+    {
+        char * result = NULL;
+        status error;
+        if ((error = convert_to_base(value, output_base, &result)) != success) return error;
+        printf("%s\n", result);
+        free(result);
+    }
+    else printf("%d\n", value);
     return success;
 }
 
-status input_operation(Trie_ptr trie, int input_base, uint32_t * result)
+status input_operation(Trie_ptr trie, int input_base, uint32_t * result, char * name)
 {
     char * line = NULL;
     size_t size = 0;
     if (getline(&line, &size, stdin) < 0) return invalid_variable;
-    if (line[size - 1] == '\n') line[size - 1] = 0;
-
+    size = strlen(line);
+    while (line[size - 1] == '\n') line[size - 1] = 0;
     status error;
-    uint32_t value;
     if ((error = convert_to_decimal_base(line, input_base, result)) != success)
+    {
+        free(line);
+        return error;
+    }
+    if ((error = Trie_insert(trie, name, *result)) != success)
     {
         free(line);
         return error;
@@ -103,23 +114,18 @@ status sub_operation(Trie_ptr trie, uint32_t value_1, uint32_t value_2, uint32_t
     return success;
 }
 
-uint32_t fast_mod_pow(uint32_t base, uint32_t exponent, uint32_t modulus) {
-  uint32_t result = 1;
-  base %= modulus;
+uint32_t fast_mod_pow(uint32_t base, uint32_t exponent, uint32_t modulus) 
+{
+    if (exponent == 0) return 1;
+    uint32_t z = fast_mod_pow(base % modulus, exponent / 2, modulus) % modulus;
+    if (exponent % 2 == 0) return (z * z) % modulus;
+    return ((base % modulus) * ((z * z) % modulus)) % modulus;
 
-  while (exponent > 0) {
-    if (exponent & 1) {
-      result = (result * base) % modulus;
-    }
-    exponent >>= 1;
-    base = (base * base) % modulus;
-  }
-  return result;
 }
 
 status pow_operation(Trie_ptr trie, uint32_t value_1, uint32_t value_2, uint32_t * result)
 {
-    *result = fast_mod_pow(value_1, value_2, (1 << 32));
+    *result = fast_mod_pow(value_1, value_2, (1 << 31));
     return success;
 }
 

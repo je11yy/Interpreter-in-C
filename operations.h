@@ -14,7 +14,7 @@ status not_operation(Trie_ptr trie, uint32_t value, uint32_t * result);
 
 status output_operation(Trie_ptr trie, uint32_t value, int ouput_base);
 
-status input_operation(Trie_ptr trie, int input_base, uint32_t * result);
+status input_operation(Trie_ptr trie, int input_base, uint32_t * result, char * name);
 
 status add_operation(Trie_ptr trie, uint32_t value_1, uint32_t value_2, uint32_t * result);
 
