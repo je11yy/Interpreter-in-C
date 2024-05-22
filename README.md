@@ -2,7 +2,6 @@
 <div>
     <ol>
         <li>Debug function;</li>
-        <li>Segmention fault on settings.</li>
     </ol>
 </div>
 

@@ -222,10 +222,10 @@ status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_
     
     while (token)
     {
-        if (token[0] && is_operation(token, &operation_name) == success)
+        if (token[0] && is_new_operation(settings, token, &operation_name) == success)
         {
             commands_count++;
-            if ((settings->basic_syntax[operation_name] == left && arguments_count / commands_count != 0) ||
+            if ((settings->basic_syntax[operation_name] == left && arguments_count / commands_count > 1) ||
                 (settings->basic_syntax[operation_name] == middle && 
                 (settings->basic_types[operation_name] == unary || arguments_count / commands_count != 1)) ||
                 (settings->basic_syntax[operation_name] == right && 
@@ -236,7 +236,6 @@ status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_
                 error = invalid_lexeme;
                 goto cleanup;
             }
-            if (settings->basic_syntax[operation_name] == left) break;
             tmp_nesting--;
             if (tmp_nesting <= 0) break;
         }
@@ -258,7 +257,6 @@ status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_
         error = invalid_lexeme;
         goto cleanup;
     }
-
     // если токен - команда
     if (settings->basic_syntax[operation_name] != left && nesting && commands_count < nesting)
     {
@@ -501,7 +499,7 @@ status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffe
         }
         strcpy(string_copy, string);
         if ((error = my_strtok(&copy_res, &string_copy, "()")) != success) goto cleanup;
-        if (strcmp(copy_res, "output") == success || strcmp(copy_res, "input") == success)
+        if (strcmp(copy_res, settings->operations_names[2]) == success || strcmp(copy_res, settings->operations_names[1]) == success)
         {
             free(copy_res);
             copy_res = NULL;
@@ -521,7 +519,7 @@ status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffe
             {
                 if (is_variable(string) != success)
                 {
-                    error =  invalid_variable;
+                    error = invalid_variable;
                     goto cleanup;
                 }
                 variable_name = (char*)malloc((strlen(string) + 1) * sizeof(char));
@@ -548,11 +546,7 @@ status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffe
                 if (string) free(string);
                 string = NULL;
                 if ((error = my_strtok(&string, &line_copy, settings->operations_names[OPERATIONS_COUNT - 1])) != success) goto cleanup;
-                if (is_variable(string) != success)
-                {
-                    error = invalid_variable;
-                    goto cleanup;
-                }
+                if ((error = is_variable(string)) != success) goto cleanup;
                 variable_name = (char*)malloc((strlen(string) + 1) * sizeof(char));
                 if (!variable_name)
                 {

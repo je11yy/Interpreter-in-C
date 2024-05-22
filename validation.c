@@ -25,6 +25,19 @@ int get_symbols_count(uint32_t number, int base)
     return count;
 }
 
+status is_new_operation(Current_settings_ptr settings, char * string, operation * operation_name)
+{
+    for (int i = 0; i < OPERATIONS_COUNT; ++i)
+    {
+        if (strcmp(string, settings->operations_names[i]) == 0)
+        {
+            *operation_name = i;
+            return success;
+        }
+    }
+    return fail;
+}
+
 status is_operation(char * string, operation * operation_name)
 {
     for (int i = 0; i < OPERATIONS_COUNT; ++i)
@@ -40,6 +53,7 @@ status is_operation(char * string, operation * operation_name)
 
 status is_variable(char * string)
 {
+    if (!string) return invalid_lexeme;
     if (isdigit(string[0])) return invalid_variable;
     for (int i = 0; string[i] != 0; ++i)
     {

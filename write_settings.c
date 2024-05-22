@@ -14,7 +14,7 @@ status write_new_settings(Current_settings_ptr settings)
         char * syntax;
         if (settings->basic_syntax[i] == left) fprintf(config_file, "%s()\n", start_operations_names[i]);
         else if (settings->basic_syntax[i] == right) fprintf(config_file, "()%s\n", start_operations_names[i]);
-        else if (settings->basic_syntax[i] == middle) fprintf(config_file, "(%s)\n", start_operations_names[i]);
+        else if (i != OPERATIONS_COUNT - 1 && settings->basic_syntax[i] == middle) fprintf(config_file, "(%s)\n", start_operations_names[i]);
     }
     fclose(config_file);
     return success;

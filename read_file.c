@@ -40,8 +40,7 @@ status read_file_with_settings(FILE *file, Current_settings_ptr settings)
         {
             if (operation_changing)
             {
-                free(settings->operations_names[operation_name]);
-                settings->operations_names[operation_name] = token;
+                change_name(settings, operation_name, token);
                 command_flag = 1;
                 operation_changing = 0;
                 free(token);
@@ -51,8 +50,6 @@ status read_file_with_settings(FILE *file, Current_settings_ptr settings)
                     free(line);
                     return error;
                 }
-                free(line);
-                line = NULL;
                 continue;
             }
             if (flag && find_comment_end(&token) == success) flag = 0;
@@ -64,8 +61,6 @@ status read_file_with_settings(FILE *file, Current_settings_ptr settings)
                     free(line);
                     return error;
                 }
-                free(line);
-                line = NULL;
                 continue;
             }
             if (token[0] == '#') break;
@@ -81,8 +76,6 @@ status read_file_with_settings(FILE *file, Current_settings_ptr settings)
                     free(line);
                     return error;
                 }
-                free(line);
-                line = NULL;
                 continue;
             }
 
@@ -154,8 +147,6 @@ status read_file_with_settings(FILE *file, Current_settings_ptr settings)
                 free(line);
                 return error;
             }
-            free(line);
-            line = NULL;
         }
         command_flag = 0;
         if (token) free(token);
