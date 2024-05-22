@@ -1,7 +1,6 @@
 <h2 align="center">TODO</h2>
 <div>
     <ol>
-        <li>Comments in program;</li>
         <li>Writing in config file new settings;</li>
         <li>Debug function;</li>
         <li>Connect all parts together</li>
@@ -10,7 +9,7 @@
 
 <h2 align="center">[from 20.05.2024]</h2>
 <div>Something done but I tested this only on one program :)<br> Leaks were checked: no leaks are possible
-    <br>Reading settings file added</div>
+    <br>Reading settings file added<<br>Comments in program added</div>
 
 
 <h2 align="center">[from 21.05.2024]</h2>
@@ -45,7 +44,7 @@
 <p>There isn't an instruction what base should be the operations arguments, so it would be decimal base.</p>
 
 <h3 align="center">How it works?</h3>
-<p>Interpreter open the "config.txt" file and search for custom settings. If first line is "STANDART", searching will be stopped. Then program checks, if there is a settings file in command line argument: if so, it change some instructions with newest. After this program fills out the bases (align, input and output) if needed and starts interpreteting program file</p>
+<p>Interpreter open the "config.txt" file and search for custom settings. Then program checks, if there is a settings file in command line argument: if so, it change some instructions with newest. After this program fills out the bases (align, input and output) if needed and starts interpreteting program file</p>
 
 <h3>Settings file example:</h3>
 <code>

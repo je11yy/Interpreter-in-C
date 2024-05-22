@@ -8,7 +8,7 @@
 status convert_to_decimal_base(char * to_convert, int original_base, uint32_t * result);
 status convert_to_base(uint32_t to_convert, int to_base, char ** result);
 
-status get_value(Trie_ptr trie, char * name, uint32_t * result);
+status get_value(Trie_ptr trie, char * name, uint32_t * result, int original_base);
 
 status not_operation(Trie_ptr trie, uint32_t value, uint32_t * result);
 

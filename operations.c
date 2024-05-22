@@ -35,16 +35,16 @@ status convert_to_base(uint32_t to_convert, int to_base, char ** result)
     return success;
 }
 
-status get_value(Trie_ptr trie, char * name, uint32_t * result)
+status get_value(Trie_ptr trie, char * name, uint32_t * result, int original_base)
 {
     Trie_node_ptr node = NULL;
     uint32_t value;
     status error = Trie_find(trie, name, &node);
 
     if (error == success) value = node->value;
-    else if (error == cannot_find)
+    else if (error == cannot_find && is_number(name) == success)
     {
-        error = convert_to_decimal_base(name, 10, &value);
+        error = convert_to_decimal_base(name, original_base, &value);
         if (error != success) return error;
     }
     else return error;

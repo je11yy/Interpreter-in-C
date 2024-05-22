@@ -123,7 +123,51 @@ status my_strtok(char ** result, char ** st_string, const char * delim)
         return invalid_lexeme;
     }
     if (is_delim(string[i], delim) == success) ++i;
+
     shift_string(st_string, i);
+    free_from_delims(&new_string);
+    *result = new_string;
+    return success;
+}
+
+// тк "=" - тоже функция, пользователь может заменить то, как она выглядит, на многосимвольное выражение. поэтому для него сделаем отдельный strtok
+status my_assign_strtok(char ** result, char ** st_string, const char * delim)
+{
+    int is_empty_string = 1;
+    char * string = *st_string;
+    *result = NULL;
+    if (!string[0]) return success;
+    char * new_string = (char*)calloc((strlen(string) + 1), sizeof(char));
+    if (!new_string) return no_memory;
+    int i = 0;
+
+    char * ptr = strstr(string, delim);
+    if (!ptr)
+    {
+        shift_string(st_string, strlen(string));
+        free_from_delims(&new_string);
+        *result = new_string;
+        return success;
+    }
+    while (string[i] != *ptr)
+    {
+        if (string[i] != ' ' && string[i] != '\n' && string[i] != '\t') is_empty_string = 0;
+        new_string[i] = string[i];
+        ++i;
+    }
+    if (string[0] == *ptr)
+    {
+        shift_string(st_string, i + 1);
+        free(new_string);
+        return my_assign_strtok(result, st_string, delim);
+    }
+    if (is_empty_string)
+    {
+        free(new_string);
+        return success;
+    }
+    shift_string(st_string, i + strlen(delim));
+    
     free_from_delims(&new_string);
     *result = new_string;
     return success;
@@ -177,7 +221,7 @@ status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_
         if (is_variable(tmp_expression) == success || is_number(tmp_expression) == success)
         {
             free(expression);
-            error = get_value(trie, tmp_expression, result);
+            error = get_value(trie, tmp_expression, result, assign_base);
             free(tmp_expression);
             return error;
         }
@@ -347,6 +391,38 @@ status free_from_delims(char ** string)
     return success;
 }
 
+status check_comments(char ** st_string, int * is_breakpoint)
+{
+    char * string = *st_string;
+    int i = 0;
+    while (string[i] && string[i] != '#') ++i;
+    if (!string[i]) return fail;
+    int j = i;
+    while (string[j] && string[j] != '\n') ++j;
+    if (!string[j]) return success; // комментарий еще продолжается
+    // если же нашли конец, находится ли внутри BREAKPOINT или нужно просто удалить комментарий (удаляем, просто заменяя все на пробелы)
+
+    // проверка, лежит ли внутри брейкпоинт
+    int no = 0;
+    char * breakpoint = "BREAKPOINT";
+    if (strlen(breakpoint) != j - (i + 1)) no = 1;
+    if (!no)
+    {
+        for (int h = i + 1; h < j; ++h)
+        {
+            if (string[h] != breakpoint[h])
+            {
+                no = 1;
+                break;
+            }
+        }
+    }
+    if (!no) *is_breakpoint = 1;
+    // теперь просто убираем комментарий
+    for (int h = i; h < j; ++h) (*st_string)[h] = ' ';
+    return fail;
+}
+
 status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffer, int input_base, int output_base, int assign_base)
 {
     char * buffer = (char*)calloc(strlen(st_buffer) + 1, sizeof(char));
@@ -356,13 +432,55 @@ status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffe
     char * line;
     error = my_strtok(&line, &buffer, ";");
     if (error != success) return error;
+    int comment = 0;
     while (line)
     {
+        if (comment)
+        {
+            comment = 0;
+            int i = 0;
+            while (line[i] && line[i] != '\n')
+            {
+                line[i] = ' ';
+                ++i;
+            }
+            if (!line[i])
+            {
+                free(line);
+                line = NULL;
+                error = my_strtok(&line, &buffer, ";");
+                if (error != success) return error;
+                continue;
+            }
+        }
+        free_from_delims(&line);
+        int breakpoint;
+        if ((error = check_comments(&line, &breakpoint)) == success) // то есть комментарий не закончился
+        {
+            comment = 1;
+            if (line[0] != '#')
+            {
+                char * line_copy_1 = (char*)malloc((strlen(line) + 1) * sizeof(char));
+                if (!line_copy_1) return no_memory;
+                strcpy(line_copy_1, line);
+                error = my_strtok(&line, &line_copy_1, "#");
+                free(line_copy_1);
+                if (error != success) return error;
+            }
+            else
+            {
+                free(line);
+                line = NULL;
+                error = my_strtok(&line, &buffer, ";");
+                if (error != success) return error;
+                continue;
+            }
+        }
         char * line_copy = (char*)malloc((strlen(line) + 1) * sizeof(char));
         if (!line_copy) return no_memory;
         strcpy(line_copy, line);
         char * string;
-        error = my_strtok(&string, &line_copy, "=");
+        error = my_assign_strtok(&string, &line_copy, settings->operations_names[OPERATIONS_COUNT - 1]);
         if (error != success)
         {
             free(buffer);
@@ -394,7 +512,7 @@ status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffe
             strcpy(variable_name, string);
             free(string);
             string = NULL;
-            error = my_strtok(&string, &line_copy, "=");
+            error = my_strtok(&string, &line_copy, settings->operations_names[OPERATIONS_COUNT - 1]);
             if (error != success)
             {
                 free(buffer);
@@ -426,7 +544,7 @@ status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffe
             strcpy(expression, string);
             free(string);
             string = NULL;
-            error = my_strtok(&string, &line_copy, "=");
+            error = my_strtok(&string, &line_copy, settings->operations_names[OPERATIONS_COUNT - 1]);
             if (error != success)
             {
                 free(string);
@@ -486,6 +604,71 @@ status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffe
         error = my_strtok(&line, &buffer, ";");
         if (error != success) return error;
     }
+    free(buffer);
+    return success;
+}
+
+status read_full_file(FILE * file, char ** string)
+{
+    size_t size = 0, capacity = 16;
+    *string = (char*)calloc(capacity, sizeof(char));
+    if (!*string)
+    {
+        fclose(file);
+        return no_memory;
+    }
+    char c = getc(file);
+    while (c != EOF)
+    {
+        if (size + 1 == capacity)
+        {
+            capacity *= 2;
+            char * tmp = (char*)realloc(*string, capacity * sizeof(char));
+            if (!tmp)
+            {
+                free(*string);
+                fclose(file);
+                return no_memory;
+            }
+            *string = tmp;
+        }
+        (*string)[size] = c;
+        ++size;
+        c = getc(file);
+    }
+    (*string)[size] = 0;
+    fclose(file);
+    return success;
+}
+
+status interpretate(FILE * file, Current_settings_ptr settings, int input_base, int assign_base, int output_base)
+{
+    Trie_ptr trie = Trie_create();
+    if (!trie)
+    {
+        fclose(file);
+        free_current_settings(settings);
+        return file_open_error;
+    }
+
+    char * buffer = NULL;
+    status error;
+    if ((error = read_full_file(file, &buffer)) != success)
+    {
+        free_current_settings(settings);
+        Trie_free(trie);
+        return error;
+    }
+
+    if ((error = scan_buffer(settings, trie, buffer, input_base, output_base, assign_base)) != success)
+    {
+        Trie_free(trie);
+        free_current_settings(settings);
+        free(buffer);
+        return error;
+    }
+    Trie_free(trie);
+    free_current_settings(settings);
     free(buffer);
     return success;
 }
