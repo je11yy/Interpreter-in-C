@@ -1,7 +1,7 @@
 <h2 align="center">TODO</h2>
 <div>
     <ol>
-        <li>Writing in config file new settings;</li>
+        <li>Nesting for all syntax type, check unary operations;</li>
         <li>Debug function;</li>
         <li>Connect all parts together</li>
     </ol>

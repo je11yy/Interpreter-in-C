@@ -173,12 +173,20 @@ status my_assign_strtok(char ** result, char ** st_string, const char * delim)
     return success;
 }
 
+int check_nesting(char * expression)
+{
+    int count = 0;
+    for (int i = 0; expression[i] != 0; ++i) if (expression[i] == '(') count++;
+    return count;
+}
+
 status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_expression, uint32_t * result, int input_base, int output_base, int assign_base)
 {
     if (!st_expression) return invalid_lexeme;
     char * expression = (char*)calloc(strlen(st_expression) + 1, sizeof(char));
     if (!expression) return no_memory;
     strcpy(expression, st_expression);
+    int nesting = check_nesting(expression);
     char * token;
     status error = my_strtok(&token, &expression, "(), ");
     if (error != success)
@@ -278,24 +286,75 @@ status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_
             case binary:
                 uint32_t value_1;
                 uint32_t value_2;
-                char * to_solve_1;
-                char * to_solve_2;
+                char * to_solve_1 = (char*)calloc(1, sizeof(char));
+                if (!to_solve_1)
+                {
+                    free(expression);
+                    free(tmp_expression);
+                    return no_memory;
+                }
+                char * to_solve_2 = (char*)calloc(1, sizeof(char));
+                if (!to_solve_2)
+                {
+                    free(to_solve_1);
+                    free(expression);
+                    free(tmp_expression);
+                    return no_memory;
+                }
                 switch (settings->basic_syntax[operation_name])
                 {
                     case left:
                         if (terms != 0)
                         {
+                            free(to_solve_2);
+                            free(to_solve_1);
                             free(expression);
                             free(tmp_expression);
                             return invalid_lexeme;
                         }
-                        error = my_strtok(&to_solve_1, &expression, "(),");
+                        char * tok = NULL;
+                        error = my_strtok(&tok, &expression, ",");
                         if (error != success)
                         {
+                            free(to_solve_2);
+                            free(to_solve_1);
                             free(expression);
                             free(tmp_expression);
                             return error;
                         }
+                        if ((error = add_to_expression(&to_solve_1, tok)) != success)
+                        {
+                            free(to_solve_2);
+                            free(to_solve_1);
+                            free(expression);
+                            free(tmp_expression);
+                            return error;
+                        }
+                        int tmp_nesting = nesting - 1;
+                        while (tok && tmp_nesting - 1 > 0)
+                        {
+                            free(tok);
+                            tok = NULL;
+                            error = my_strtok(&tok, &expression, ",");
+                            if (error != success)
+                            {
+                                free(to_solve_2);
+                                free(to_solve_1);
+                                free(expression);
+                                free(tmp_expression);
+                                return error;
+                            }
+                            if ((error = add_to_expression(&to_solve_1, tok)) != success)
+                            {
+                                free(to_solve_2);
+                                free(to_solve_1);
+                                free(expression);
+                                free(tmp_expression);
+                                return error;
+                            }
+                            tmp_nesting--;
+                        }
+                        if (tok) free(tok);
                         break;
                     case right:
                         if (terms != 2)
@@ -330,7 +389,51 @@ status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_
                 }
                 if (settings->basic_syntax[operation_name] == middle) error = my_strtok(&to_solve_2, &expression, "(), ");
                 else if (settings->basic_syntax[operation_name] == right) error = my_strtok(&to_solve_2, &tmp_expression, "(),");
-                else error = my_strtok(&to_solve_2, &expression, "(),");
+                else
+                {
+                    char * tok = NULL;
+                    int tmp_nesting = nesting - 1;
+                    error = my_strtok(&tok, &expression, ",)");
+                    if (error != success)
+                    {
+                        free(to_solve_2);
+                        free(to_solve_1);
+                        free(expression);
+                        free(tmp_expression);
+                        return error;
+                    }
+                    if ((error = add_to_expression(&to_solve_2, tok)) != success)
+                    {
+                        free(to_solve_2);
+                        free(to_solve_1);
+                        free(expression);
+                        free(tmp_expression);
+                        return error;
+                    }
+                    while (tok && tmp_nesting - 1 > 0)
+                    {
+                        free(tok);
+                        tok = NULL;
+                        error = my_strtok(&tok, &expression, ",)");
+                        if (error != success)
+                        {
+                            free(to_solve_2);
+                            free(to_solve_1);
+                            free(expression);
+                            free(tmp_expression);
+                            return error;
+                        }
+                        if ((error = add_to_expression(&to_solve_2, tok)) != success)
+                        {
+                            free(to_solve_2);
+                            free(to_solve_1);
+                            free(expression);
+                            free(tmp_expression);
+                            return error;
+                        }
+                        tmp_nesting--;
+                    }
+                }
                 if (error != success)
                 {
                     free(to_solve_1);
@@ -667,6 +770,15 @@ status interpretate(FILE * file, Current_settings_ptr settings, int input_base, 
         free(buffer);
         return error;
     }
+
+    uint32_t value;
+    get_value(trie, "var_1", &value, 10);
+    printf("var_1: %d\n", value);
+    get_value(trie, "var_2", &value, 10);
+    printf("var_2: %d\n", value);
+    get_value(trie, "Var3", &value, 10);
+    printf("Var3: %d\n", value);
+
     Trie_free(trie);
     free_current_settings(settings);
     free(buffer);
