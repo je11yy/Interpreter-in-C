@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 
-Current_settings_ptr create_current_settings()
+Current_settings_ptr create_current_settings(int debug)
 {
     operation_syntax start_basic_syntax[] = {left, left, left, left, left, left, left, left, left, left, left, left};
     operation_type start_basic_types[] = {unary, unary, unary, binary, binary, binary, binary, binary, binary, binary, binary, binary, binary};
@@ -48,6 +48,7 @@ Current_settings_ptr create_current_settings()
         settings->basic_types[i] = start_basic_types[i];
     }
     settings->operation_result_type = start_operation_result_type;
+    settings->debug = debug;
     return settings;
 }
 

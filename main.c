@@ -8,9 +8,13 @@ int main(int argc, char *argv[])
         print_error(command_line_arguments_error);
         return command_line_arguments_error;
     }
+
+    int debug = 0;
+    if (is_debug(argv[argc - 1]) == success) debug = 1;
+
     // сначала считываем сохраненные настройки
     status error;
-    Current_settings_ptr settings = create_current_settings();
+    Current_settings_ptr settings = create_current_settings(debug);
     if (settings) // если там что-то есть
     {
         FILE * start_settings = fopen(CONFIG_FILE, "r");

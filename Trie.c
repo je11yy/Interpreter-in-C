@@ -67,11 +67,7 @@ status Trie_find(Trie_ptr tree, char * name, Trie_node_ptr * result)
         int index = name[i] - '0';
         if (isdigit(name[i])) index = name[i] - '0';
         else if (name[i] == '_') index = VARIABLE_CHARAS_COUNT - 1;
-        else
-        {
-            if (isupper(name[i])) index = name[i] - 'A' + 10;
-            else index = name[i] - 'a' + 10;
-        }
+        else index = name[i] - 'A';
         if (!current->childs[index]) return cannot_find;
         current = current->childs[index];
     }
@@ -89,14 +85,10 @@ status Trie_insert(Trie_ptr tree, char * name, uint32_t value)
 
     for (int i = 0; i < string_size; ++i)
     {
-        int index = name[i] - '0';
+        int index;
         if (isdigit(name[i])) index = name[i] - '0';
         else if (name[i] == '_') index = VARIABLE_CHARAS_COUNT - 1;
-        else
-        {
-            if (isupper(name[i])) index = name[i] - 'A' + 10;
-            else index = name[i] - 'a' + 10;
-        }
+        else index = name[i] - 'A';
         if (!current->childs[index])
         {
             Trie_node_ptr new_node = Trie_node_create();

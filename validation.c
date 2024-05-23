@@ -70,3 +70,11 @@ status is_number(char * string)
     }
     return success;
 }
+
+status is_debug(char * string)
+{
+    int count = 3;
+    char * variations[] = {"--debug", "-d", "/debug"};
+    for (int i = 0; i < count; ++i) if (!strcmp(variations[i], string)) return success;
+    return fail;
+}

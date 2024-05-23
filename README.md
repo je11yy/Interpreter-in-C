@@ -33,10 +33,11 @@
 <p>Command line arguments. Program will not work without arguments marked with "*"</p>
 <ol>
     <li>File with a program*</li>
-    <li>File with settings</li>
     <li>Base assign</li>
     <li>Base input</li>
     <li>Base output</li>
+    <li>File with settings</li>
+    <li>Debug flag (ALWAYS last)</li>
 </ol>
 <p>Current setting are in the "config.txt" file. Program will not work without it.</p>
 <p>There isn't an instruction what base should be the operations arguments, so it would be decimal base.</p>

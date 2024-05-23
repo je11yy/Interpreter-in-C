@@ -93,6 +93,7 @@ status input_operation(Trie_ptr trie, int input_base, uint32_t * result, char * 
         free(line);
         return error;
     }
+    free(line);
     return success;
 }
 

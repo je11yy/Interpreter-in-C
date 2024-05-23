@@ -12,5 +12,6 @@ status is_variable(char * string);
 status is_operation(char * string, operation * operation_name);
 status is_number(char * string);
 status is_new_operation(Current_settings_ptr settings, char * string, operation * operation_name);
+status is_debug(char * string);
 
 #endif

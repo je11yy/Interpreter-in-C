@@ -644,7 +644,22 @@ status interpretate(FILE * file, Current_settings_ptr settings, int input_base, 
         free(buffer);
         return error;
     }
-
+    char * prefix = (char *)calloc(1, sizeof(char));
+    if (!prefix)
+    {
+        Trie_free(trie);
+        free_current_settings(settings);
+        free(buffer);
+        return no_memory;
+    }
+    if ((error = print_all_variables(trie->root, prefix)) != success)
+    {
+        Trie_free(trie);
+        free_current_settings(settings);
+        free(buffer);
+        return error;
+    }
+    free(prefix);
     Trie_free(trie);
     free_current_settings(settings);
     free(buffer);
