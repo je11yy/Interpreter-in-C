@@ -1,6 +1,5 @@
 #include "debug.h"
 
-
 status print_all_variables(Trie_node_ptr node, char * prefix)
 {
     if (!node) return success;
@@ -130,4 +129,23 @@ status remove_variable(Trie_ptr trie, char * variables[], size_t size)
 status debugger(Trie_ptr trie)
 {
     // TODO DIALOG
+    printf("\tDEBUGGER\n");
+    int count = 7;
+    char * functions[] = {
+        "Print variable, its value and dump;",
+        "Print all initialized variables;",
+        "Change variable value;",
+        "Insert new variable;",
+        "Delete variables inserted while debugging;",
+        "Stop debugging;",
+        "Stop interpreter."
+    };
+    for (int i = 0; i < count; ++i) printf("%d. %s\n", i + 1, functions[i]);
+
+    char * write_down = "Write down the number of function >> ";
+    uint32_t number;
+    while (1)
+    {
+        printf("%s", write_down);
+    }
 }

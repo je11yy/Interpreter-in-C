@@ -426,7 +426,7 @@ status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffe
     char * line = NULL;
     int comment = 0;
     int i = 0;
-    int breakpoint;
+    int breakpoint = 0;
     char * line_copy_1 = NULL;
     char * line_copy = NULL;
     char * string = NULL;
@@ -482,6 +482,11 @@ status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffe
                 if (error = my_strtok(&line, &buffer, ";") != success) goto cleanup;
                 continue;
             }
+        }
+        if (breakpoint) 
+        {
+            if ((error = debugger(trie)) != success) goto cleanup;
+            breakpoint = 0;
         }
         line_copy = (char*)malloc((strlen(line) + 1) * sizeof(char));
         if (!line_copy)
@@ -663,7 +668,7 @@ status interpretate(FILE * file, Current_settings_ptr settings, int input_base, 
     // }
     // free(prefix);
 
-    
+
     Trie_free(trie);
     free_current_settings(settings);
     free(buffer);
