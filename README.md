@@ -1,7 +1,7 @@
 <h2 align="center">TODO</h2>
 <div>
     <ol>
-        <li>Debug function;</li>
+        <li>Debug function: insertion (two methods), connect all together;</li>
     </ol>
 </div>
 
