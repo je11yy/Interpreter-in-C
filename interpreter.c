@@ -402,7 +402,7 @@ status check_comments(char ** st_string, int * is_breakpoint)
     int no = 0;
     char * breakpoint = "BREAKPOINT";
     if (strlen(breakpoint) != j - (i + 1)) no = 1;
-    if (!no)
+    if (no)
     {
         for (int h = i + 1; h < j; ++h)
         {
@@ -485,7 +485,9 @@ status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffe
         }
         if (breakpoint) 
         {
-            if ((error = debugger(trie)) != success) goto cleanup;
+            int flag = 1;
+            if ((error = debugger(trie, &flag)) != success) goto cleanup;
+            if (!flag) goto cleanup;
             breakpoint = 0;
         }
         line_copy = (char*)malloc((strlen(line) + 1) * sizeof(char));

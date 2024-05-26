@@ -54,6 +54,7 @@ status is_operation(char * string, operation * operation_name)
 status is_variable(char * string)
 {
     if (!string) return invalid_lexeme;
+    if (strlen(string) == 0) return invalid_lexeme;
     if (isdigit(string[0])) return invalid_variable;
     for (int i = 0; string[i] != 0; ++i)
     {

@@ -1,4 +1,5 @@
 #include "debug.h"
+#include <stdio.h>
 
 status print_all_variables(Trie_node_ptr node, char * prefix)
 {
@@ -59,21 +60,35 @@ void print_memory_dump(void * ptr, size_t size)
 status print_variable_and_value(Trie_ptr trie)
 {
     char * line = NULL;
+    size_t size = 0;
     char * result = NULL;
     status error = success;
-    size_t size = 0;
-    if (getline(&line, &size, stdin) < 0) return no_memory;
+    printf("\nWrite down the variable name >> ");
+    if (getline(&line, &size, stdin) < 0) return invalid_variable;
     size = strlen(line);
     if (line[size - 1] == '\n') line[size - 1] = 0;
+    while (is_variable(line) != success)
+    {
+        if (strlen(line) != 0)
+        {
+            printf("\nTry again\n");
+            printf("\nWrite down the variable name >> ");
+        }
+        line = NULL;
+        size = 0;
+        if (getline(&line, &size, stdin) < 0) return invalid_variable;
+        size = strlen(line);
+        if (line[size - 1] == '\n') line[size - 1] = 0;
+    }
 
     Trie_node_ptr node = NULL;
     if ((error = Trie_find(trie, line, &node)) != success) goto cleanup;
 
     if ((error = convert_to_base(node->value, 16, &result)) != success) goto cleanup;
 
-    printf("variable: %s\nvalue in 16 base: %d\ndump: ", line, result);
+    printf("variable: %s\nvalue in 16 base: %s\ndump: ", line, result);
     print_memory_dump(&(node->value), sizeof(node->value));
-
+    printf("\n");
     cleanup:
         free(line);
         if (result) free(result);
@@ -83,52 +98,280 @@ status print_variable_and_value(Trie_ptr trie)
 status change_variable_value(Trie_ptr trie)
 {
     char * line = NULL;
-    status error = success;
     size_t size = 0;
+    status error = success;
+    printf("\nWrite down the variable name >> ");
+    if (getline(&line, &size, stdin) < 0) return invalid_variable;
+    size = strlen(line);
+    if (line[size - 1] == '\n') line[size - 1] = 0;
+    while (is_variable(line) != success)
+    {
+        if (strlen(line) != 0)
+        {
+            printf("\nTry again\n");
+            printf("\nWrite down the variable name >> ");
+        }
+        line = NULL;
+        size = 0;
+        if (getline(&line, &size, stdin) < 0) return invalid_variable;
+        size = strlen(line);
+        if (line[size - 1] == '\n') line[size - 1] = 0;
+    }
+
+    char * name = line;
+    // проверить переменная ли
+
+    line = NULL;
+    size = 0;
+    printf("\nWrite down new value >> ");
+
     if (getline(&line, &size, stdin) < 0) return no_memory;
     size = strlen(line);
     if (line[size - 1] == '\n') line[size - 1] = 0;
     uint32_t value;
-    if ((error = get_value(trie, line, &value, 16)) != success) goto cleanup;
+
+    while ((error = get_value(trie, line, &value, 16)) != success)
+    {
+        if (strlen(line) != 0)
+        {
+            printf("\nTry again\n");
+            printf("\nWrite down the variable name >> ");
+        }
+        free(line);
+        line = NULL;
+        if (getline(&line, &size, stdin) < 0) return invalid_variable;
+        size = strlen(line);
+        if (line[size - 1] == '\n') line[size - 1] = 0;
+    }
 
     Trie_node_ptr node = NULL;
-    if ((error = Trie_find(trie, line, &node)) != success) goto cleanup;
+    if ((error = Trie_find(trie, name, &node)) != success) goto cleanup;
     node->value = value;
 
+    printf("\nDone!\n");
     cleanup:
         free(line);
         return error;
 }
 
-status insert_new_variable(Trie_ptr trie)
+status insert_new_variable(Trie_ptr trie, char ** var_name)
 {
-    // TODO
+    char * line = NULL;
+    size_t size = 0;
+    status error = success;
+    printf("\nWrite down the variable name >> ");
+    if (getline(&line, &size, stdin) < 0) return invalid_variable;
+    size = strlen(line);
+    if (line[size - 1] == '\n') line[size - 1] = 0;
+    while (is_variable(line) != success)
+    {
+        if (strlen(line) != 0)
+        {
+            printf("\nTry again\n");
+            printf("\nWrite down the variable name >> ");
+        }
+        line = NULL;
+        size = 0;
+        if (getline(&line, &size, stdin) < 0) return invalid_variable;
+        size = strlen(line);
+        if (line[size - 1] == '\n') line[size - 1] = 0;
+    }
+
+    *var_name = line;
+    // проверить переменная ли
+    char * variants[] = 
+    {
+        "Scan value as zeckendorf;",
+        "Scan value as roman."
+    };
+    for (int i = 0; i < 2; ++i) printf("%d. %s\n", i + 1, variants[i]);
+    int res;
+    printf("\nWrite down the number of function >> ");
+    scanf("%d", &res);
+    while (1)
+    {
+        if (res == 1 || res == 2) break;
+        else
+        {
+            printf("\nTry again\n");
+            while (getchar() != '\n');
+        }
+        printf("\nWrite down the number of function >> ");
+        scanf("%d", &res);
+    }
+    uint32_t result;
+    switch (res)
+    {
+        case 1:
+            if ((error = insert_new_variable_zekendorf(trie, line)) != success) goto cleanup;
+            break;
+        case 2:
+            if ((error = insert_new_variable_rim(trie, line)) != success) goto cleanup;
+            break;
+    }
+    printf("\nDone!\n");
+    cleanup:
+        return error;
+}
+
+status zeckendorf_to_decimal(char* zeckendorf, uint32_t * res) 
+{
+    if (strlen(zeckendorf) == 0) return invalid_function_argument;
+    uint32_t decimal = 0;
+    int length = strlen(zeckendorf);
+
+    for (int i = 0; i < length; i++) 
+    {
+        if (zeckendorf[i] == '1') decimal += (uint32_t)pow(2, i);
+        else if (zeckendorf[i] != '0') return invalid_function_argument;
+    }
+    *res = decimal;
+    return success;
 }
 
 status insert_new_variable_zekendorf(Trie_ptr trie, char * name)
 {
-    // TODO
+    char * line = NULL;
+    size_t size = 0;
+    status error = success;
+    printf("\nWrite down the value in zeckendorf >> ");
+    if (getline(&line, &size, stdin) < 0) return invalid_variable;
+    size = strlen(line);
+    if (line[size - 1] == '\n') line[size - 1] = 0;
+
+    uint32_t res;
+    while ((error = zeckendorf_to_decimal(line, &res)) != success)
+    {
+        if (strlen(line) != 0)
+        {
+            printf("\nTry again\n");
+            printf("\nWrite down the value in zeckendorf >> ");
+        }
+        free(line);
+        line = NULL;
+        size = 0;
+        if (getline(&line, &size, stdin) < 0) return invalid_variable;
+        size = strlen(line);
+        if (line[size - 1] == '\n') line[size - 1] = 0;
+    }
+
+    if ((error = Trie_insert(trie, name, res)) != success) goto cleanup;
+
+    cleanup:
+        if (line) free(line);
+        return error;
+}
+
+status roman_to_decimal(char* roman, uint32_t * res) 
+{
+    if (strlen(roman) == 0) return invalid_function_argument;
+    uint32_t decimal = 0;
+    int length = strlen(roman);
+
+    for (int i = 0; i < length; i++) 
+    {
+        switch (roman[i]) 
+        {
+        case 'I':
+            if (i + 1 < length && (roman[i + 1] == 'V' || roman[i + 1] == 'X')) decimal -= 1;
+            else decimal += 1;
+            break;
+        case 'V':
+            decimal += 5;
+            break;
+        case 'X':
+            if (i + 1 < length && (roman[i + 1] == 'L' || roman[i + 1] == 'C')) decimal -= 10; 
+            else decimal += 10;
+            break;
+        case 'L':
+            decimal += 50;
+            break;
+        case 'C':
+            if (i + 1 < length && (roman[i + 1] == 'D' || roman[i + 1] == 'M')) decimal -= 100; 
+            else decimal += 100;
+            break;
+        case 'D':
+            decimal += 500;
+            break;
+        case 'M':
+            decimal += 1000;
+            break;
+        default:
+            return invalid_function_argument;
+        }
+    }
+    *res = decimal;
+    return success;
 }
 
 status insert_new_variable_rim(Trie_ptr trie, char * name)
 {
-    // TODO
+    char * line = NULL;
+    size_t size = 0;
+    status error = success;
+    printf("\nWrite down the value in roman >> ");
+    if (getline(&line, &size, stdin) < 0) return invalid_variable;
+    size = strlen(line);
+    if (line[size - 1] == '\n') line[size - 1] = 0;
+
+    uint32_t res;
+    while ((error = roman_to_decimal(line, &res)) != success)
+    {
+        if (strlen(line) != 0)
+        {
+            printf("\nTry again\n");
+            printf("\nWrite down the value in roman >> ");
+        }
+        free(line);
+        line = NULL;
+        size = 0;
+        if (getline(&line, &size, stdin) < 0) return invalid_variable;
+        size = strlen(line);
+        if (line[size - 1] == '\n') line[size - 1] = 0;
+    }
+
+    if ((error = Trie_insert(trie, name, res)) != success) goto cleanup;
+
+    cleanup:
+        if (line) free(line);
+        return error;
 }
 
-status remove_variable(Trie_ptr trie, char * variables[], size_t size)
+status remove_variable(Trie_ptr trie, char * variables[], size_t * size)
 {
     status error = success;
-    for (size_t i = 0; i < size; ++i)
+    for (size_t i = 0; i < *size; ++i)
     {
         Trie_node_ptr node = NULL;
         if ((error = Trie_find(trie, variables[i], &node)) != success) return error;
         node->is_final = 0;
+        free(variables[i]);
+        variables[i] = NULL;
     }
+    *size = 0;
+    printf("\nDone!\n");
+    return success;
 }
 
-status debugger(Trie_ptr trie)
+status add_to_names_array(char *** names, size_t * size, size_t * capacity, char * name)
 {
+    if ((*size) + 1 == *capacity)
+    {
+        *capacity *= 2;
+        char ** tmp = (char**)realloc(*names, (*capacity) * sizeof(char*));
+        if (!tmp) return no_memory;
+        *names = tmp;
+    }
+    (*names)[*size] = name;
+    (*size)++;
+    return success;
+}
+
+status debugger(Trie_ptr trie, int * work_flag)
+{
+    *work_flag = 1;
     // TODO DIALOG
+    status error = success;
     printf("\tDEBUGGER\n");
     int count = 7;
     char * functions[] = {
@@ -140,12 +383,70 @@ status debugger(Trie_ptr trie)
         "Stop debugging;",
         "Stop interpreter."
     };
-    for (int i = 0; i < count; ++i) printf("%d. %s\n", i + 1, functions[i]);
 
     char * write_down = "Write down the number of function >> ";
+    char * wrong = "Something went wrong!";
     uint32_t number;
-    while (1)
+    int function = -1;
+
+    size_t size = 0;
+    size_t capacity = 1;
+    char ** new_var_names = (char**)calloc(1, sizeof(char*));
+    if (!new_var_names) return no_memory;
+
+    int flag = 1;
+
+    while (flag)
     {
-        printf("%s", write_down);
+        for (int i = 0; i < count; ++i) printf("%d. %s\n", i + 1, functions[i]);
+        printf("\n%s", write_down);
+        scanf("%d", &number);
+        switch (number)
+        {
+            case 1:
+                if ((error = print_variable_and_value(trie)) != success) goto cleanup;
+                break;
+            case 2:
+                if ((error = print_variables(trie)) != success) goto cleanup;
+                break;
+            case 3:
+                if ((error = change_variable_value(trie)) != success) goto cleanup;
+                break;
+            case 4:
+                char * new_var = NULL;
+                if ((error = insert_new_variable(trie, &new_var)) != success) goto cleanup;
+                if ((error = add_to_names_array(&new_var_names, &size, &capacity, new_var)) != success) goto cleanup;
+                break;
+            case 5:
+                if ((error = remove_variable(trie, new_var_names, &size)) != success) goto cleanup;
+                break;
+            case 6:
+                flag = 0;
+                break;
+            case 7:
+                flag = 0;
+                *work_flag = 0;
+                break;
+            default:
+                printf("\n%s\n\n", wrong);
+                while (getchar() != '\n');
+                break;
+        }
     }
+
+    cleanup:
+        if (new_var_names)
+        {
+            for (int i = 0; i < size; ++i)
+            {
+                if (new_var_names)
+                {
+                    free(new_var_names[i]);
+                    new_var_names[i] = NULL;
+                }
+            }
+            free(new_var_names);
+            new_var_names = NULL;
+        }
+        return error;
 }
