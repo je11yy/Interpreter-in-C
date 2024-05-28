@@ -369,6 +369,7 @@ status add_to_names_array(char *** names, size_t * size, size_t * capacity, char
 
 status debugger(Trie_ptr trie, int * work_flag)
 {
+    char * new_var = NULL;
     *work_flag = 1;
     // TODO DIALOG
     status error = success;
@@ -413,7 +414,6 @@ status debugger(Trie_ptr trie, int * work_flag)
                 if ((error = change_variable_value(trie)) != success) goto cleanup;
                 break;
             case 4:
-                char * new_var = NULL;
                 if ((error = insert_new_variable(trie, &new_var)) != success) goto cleanup;
                 if ((error = add_to_names_array(&new_var_names, &size, &capacity, new_var)) != success) goto cleanup;
                 break;
