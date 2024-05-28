@@ -15,6 +15,7 @@ int main(int argc, char *argv[])
     // сначала считываем сохраненные настройки
     status error;
     Current_settings_ptr settings = create_current_settings(debug);
+    // todo
     if (settings) // если там что-то есть
     {
         FILE * start_settings = fopen(CONFIG_FILE, "r");

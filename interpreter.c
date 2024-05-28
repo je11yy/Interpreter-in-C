@@ -42,7 +42,6 @@ status make_binary_expression(Trie_ptr trie, operation operation_name, uint32_t 
     switch (operation_name)
     {
         case ADD:
-            // printf("%d %d\n", value_1, value_2);
             return add_operation(trie, value_1, value_2, result);
         case MULT:
             return mult_operation(trie, value_1, value_2, result);
@@ -279,6 +278,10 @@ status solve_expression(Current_settings_ptr settings, Trie_ptr trie, char * st_
                 case right:
                     to_solve_1 = tmp_expression;
                     break;
+
+                default:
+                    error = invalid_lexeme;
+                    goto cleanup;
             }
             if ((error = solve_expression(settings, trie, to_solve_1, &value_1, input_base, output_base, assign_base)) != success) goto cleanup;
             if ((error = make_unary_expression(trie, to_solve_1, operation_name, value_1, result, input_base, output_base, assign_base)) != success) goto cleanup;
@@ -483,7 +486,7 @@ status scan_buffer(Current_settings_ptr settings, Trie_ptr trie, char * st_buffe
                 continue;
             }
         }
-        if (breakpoint) 
+        if (breakpoint && settings->debug) 
         {
             int flag = 1;
             if ((error = debugger(trie, &flag)) != success) goto cleanup;

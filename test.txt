@@ -1,4 +1,4 @@
 var_1 = 120;
 lada = 14859;
-var_2 = add(var_1, lada); #blablabla
+var_2 = lada add var_1; #blablabla
 output(var_2);
