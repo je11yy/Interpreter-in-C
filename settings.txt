@@ -1,0 +1,14 @@
+left= #asdfasf
+()add
+mult()
+xor()
+add sum
+# div /
+[div /
+div /]
+rem %
+xor <>
+xor ><
+input in
+output print
+= ->
