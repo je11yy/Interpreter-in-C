@@ -1,0 +1,4 @@
+var_1 = 120;
+lada = 14859;
+var_2 = add(var_1, lada); #blablabla
+output(var_2);
