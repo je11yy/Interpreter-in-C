@@ -39,11 +39,9 @@ status print_variables(Trie_ptr trie)
     char * prefix = (char*)calloc(1, sizeof(char));
     if (!prefix) return no_memory;
     status error = success;
-    if ((error = print_all_variables(trie->root, prefix)) != success) goto cleanup;
+    if ((error = print_all_variables(trie->root, prefix)) != success) return free_all_strings(error, 1, prefix); 
 
-    cleanup:
-        if (prefix) free(prefix);
-        return error;
+    return free_all_strings(error, 1, prefix);
 }
 
 void print_memory_dump(void * ptr, size_t size)
@@ -82,17 +80,14 @@ status print_variable_and_value(Trie_ptr trie)
     }
 
     Trie_node_ptr node = NULL;
-    if ((error = Trie_find(trie, line, &node)) != success) goto cleanup;
+    if ((error = Trie_find(trie, line, &node)) != success) return free_all_strings(error, 2, line, result);
 
-    if ((error = convert_to_base(node->value, 16, &result)) != success) goto cleanup;
+    if ((error = convert_to_base(node->value, 16, &result)) != success) return free_all_strings(error, 2, line, result);
 
     printf("variable: %s\nvalue in 16 base: %s\ndump: ", line, result);
     print_memory_dump(&(node->value), sizeof(node->value));
     printf("\n");
-    cleanup:
-        free(line);
-        if (result) free(result);
-        return error;
+    return free_all_strings(error, 2, line, result);
 }
 
 status change_variable_value(Trie_ptr trie)
@@ -145,13 +140,11 @@ status change_variable_value(Trie_ptr trie)
     }
 
     Trie_node_ptr node = NULL;
-    if ((error = Trie_find(trie, name, &node)) != success) goto cleanup;
+    if ((error = Trie_find(trie, name, &node)) != success) return free_all_strings(error, 1, line);
     node->value = value;
 
     printf("\nDone!\n");
-    cleanup:
-        free(line);
-        return error;
+    return free_all_strings(error, 1, line);
 }
 
 status insert_new_variable(Trie_ptr trie, char ** var_name)
@@ -203,15 +196,14 @@ status insert_new_variable(Trie_ptr trie, char ** var_name)
     switch (res)
     {
         case 1:
-            if ((error = insert_new_variable_zekendorf(trie, line)) != success) goto cleanup;
+            if ((error = insert_new_variable_zekendorf(trie, line)) != success) return error;
             break;
         case 2:
-            if ((error = insert_new_variable_rim(trie, line)) != success) goto cleanup;
+            if ((error = insert_new_variable_rim(trie, line)) != success) return error;
             break;
     }
     printf("\nDone!\n");
-    cleanup:
-        return error;
+    return error;
 }
 
 status zeckendorf_to_decimal(char* zeckendorf, uint32_t * res) 
@@ -255,11 +247,9 @@ status insert_new_variable_zekendorf(Trie_ptr trie, char * name)
         if (line[size - 1] == '\n') line[size - 1] = 0;
     }
 
-    if ((error = Trie_insert(trie, name, res)) != success) goto cleanup;
+    if ((error = Trie_insert(trie, name, res)) != success) return free_all_strings(error, 1, line);
 
-    cleanup:
-        if (line) free(line);
-        return error;
+    return free_all_strings(error, 1, line);
 }
 
 status roman_to_decimal(char* roman, uint32_t * res) 
@@ -330,18 +320,16 @@ status insert_new_variable_rim(Trie_ptr trie, char * name)
         if (line[size - 1] == '\n') line[size - 1] = 0;
     }
 
-    if ((error = Trie_insert(trie, name, res)) != success) goto cleanup;
+    if ((error = Trie_insert(trie, name, res)) != success) return free_all_strings(error, 1, line);
 
-    cleanup:
-        if (line) free(line);
-        return error;
+    return free_all_strings(error, 1, line);
 }
 
 status remove_variable(Trie_ptr trie, char * variables[], size_t * size)
 {
     status error = success;
     for (size_t i = 0; i < *size; ++i)
-    {
+    {   
         Trie_node_ptr node = NULL;
         if ((error = Trie_find(trie, variables[i], &node)) != success) return error;
         node->is_final = 0;
@@ -405,20 +393,116 @@ status debugger(Trie_ptr trie, int * work_flag)
         switch (number)
         {
             case 1:
-                if ((error = print_variable_and_value(trie)) != success) goto cleanup;
+                if ((error = print_variable_and_value(trie)) != success)
+                {
+                    if (new_var_names)
+                    {
+                        for (int i = 0; i < size; ++i)
+                        {
+                            if (new_var_names[i])
+                            {
+                                free(new_var_names[i]);
+                                new_var_names[i] = NULL;
+                            }
+                        }
+                        free(new_var_names);
+                        new_var_names = NULL;
+                    }
+                    return error;
+                }
                 break;
             case 2:
-                if ((error = print_variables(trie)) != success) goto cleanup;
+                if ((error = print_variables(trie)) != success)
+                {
+                    if (new_var_names)
+                    {
+                        for (int i = 0; i < size; ++i)
+                        {
+                            if (new_var_names[i])
+                            {
+                                free(new_var_names[i]);
+                                new_var_names[i] = NULL;
+                            }
+                        }
+                        free(new_var_names);
+                        new_var_names = NULL;
+                    }
+                    return error;
+                }
                 break;
             case 3:
-                if ((error = change_variable_value(trie)) != success) goto cleanup;
+                if ((error = change_variable_value(trie)) != success)
+                {
+                    if (new_var_names)
+                    {
+                        for (int i = 0; i < size; ++i)
+                        {
+                            if (new_var_names[i])
+                            {
+                                free(new_var_names[i]);
+                                new_var_names[i] = NULL;
+                            }
+                        }
+                        free(new_var_names);
+                        new_var_names = NULL;
+                    }
+                    return error;
+                }
                 break;
             case 4:
-                if ((error = insert_new_variable(trie, &new_var)) != success) goto cleanup;
-                if ((error = add_to_names_array(&new_var_names, &size, &capacity, new_var)) != success) goto cleanup;
+                if ((error = insert_new_variable(trie, &new_var)) != success)
+                {
+                    if (new_var_names)
+                    {
+                        for (int i = 0; i < size; ++i)
+                        {
+                            if (new_var_names[i])
+                            {
+                                free(new_var_names[i]);
+                                new_var_names[i] = NULL;
+                            }
+                        }
+                        free(new_var_names);
+                        new_var_names = NULL;
+                    }
+                    return error;
+                }
+                if ((error = add_to_names_array(&new_var_names, &size, &capacity, new_var)) != success)
+                {
+                    if (new_var_names)
+                    {
+                        for (int i = 0; i < size; ++i)
+                        {
+                            if (new_var_names[i])
+                            {
+                                free(new_var_names[i]);
+                                new_var_names[i] = NULL;
+                            }
+                        }
+                        free(new_var_names);
+                        new_var_names = NULL;
+                    }
+                    return error;
+                }
                 break;
             case 5:
-                if ((error = remove_variable(trie, new_var_names, &size)) != success) goto cleanup;
+                if ((error = remove_variable(trie, new_var_names, &size)) != success)
+                {
+                    if (new_var_names)
+                    {
+                        for (int i = 0; i < size; ++i)
+                        {
+                            if (new_var_names[i])
+                            {
+                                free(new_var_names[i]);
+                                new_var_names[i] = NULL;
+                            }
+                        }
+                        free(new_var_names);
+                        new_var_names = NULL;
+                    }
+                    return error;
+                }
                 break;
             case 6:
                 flag = 0;
@@ -433,20 +517,18 @@ status debugger(Trie_ptr trie, int * work_flag)
                 break;
         }
     }
-
-    cleanup:
-        if (new_var_names)
+    if (new_var_names)
+    {
+        for (int i = 0; i < size; ++i)
         {
-            for (int i = 0; i < size; ++i)
+            if (new_var_names)
             {
-                if (new_var_names)
-                {
-                    free(new_var_names[i]);
-                    new_var_names[i] = NULL;
-                }
+                free(new_var_names[i]);
+                new_var_names[i] = NULL;
             }
-            free(new_var_names);
-            new_var_names = NULL;
         }
-        return error;
+        free(new_var_names);
+        new_var_names = NULL;
+    }
+    return error;
 }

@@ -52,3 +52,20 @@ void print_error(status const error)
         default: break;
     }
 }
+
+status free_all_strings(status error, int count, ...)
+{
+    va_list strings;
+    va_start(strings, count);
+    for (int i = 0; i < count; ++i)
+    {
+        char * string = va_arg(strings, char*);
+        if (string)
+        {
+            free(string);
+            string = NULL;
+        }
+    }
+    va_end(strings);
+    return error;
+}

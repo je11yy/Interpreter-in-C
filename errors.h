@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 typedef enum
 {
@@ -22,8 +23,8 @@ typedef enum
 
 } status;
 
-void print_help_menu();
-
 void print_error(status const error);
+
+status free_all_strings(status error, int count, ...);
 
 #endif
