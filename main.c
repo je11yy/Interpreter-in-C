@@ -3,7 +3,7 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc > 6 || argc < 2)
+    if (argc > 7 || argc < 2)
     {
         print_error(command_line_arguments_error);
         return command_line_arguments_error;

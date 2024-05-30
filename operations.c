@@ -132,12 +132,14 @@ status pow_operation(Trie_ptr trie, uint32_t value_1, uint32_t value_2, uint32_t
 
 status div_operation(Trie_ptr trie, uint32_t value_1, uint32_t value_2, uint32_t * result)
 {
+    if (value_2 == 0) return invalid_lexeme;
     *result = value_1 / value_2;
     return success;
 }
 
 status rem_operation(Trie_ptr trie, uint32_t value_1, uint32_t value_2, uint32_t * result)
 {
+    if (value_2 == 0) return invalid_lexeme;
     *result = value_1 % value_2;
     return success;
 }

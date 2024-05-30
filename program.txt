@@ -1,7 +1,3 @@
-var_1 = 500;
-
-Var3 = add(var_1, 1);
-
-output(26);
 #BREAKPOINT
-output(var_1);
+y = 0;
+x = x / y;
